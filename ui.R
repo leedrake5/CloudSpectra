@@ -344,6 +344,9 @@ checkboxInput('terndensityplot', "Density Contour"),
 
 tags$hr(),
 
+sliderInput("ternpointsize", label = "Point Size", value=1, min=1, max=15),
+
+tags$hr(),
 
 downloadButton('downloadPlot5', "Plot")
 

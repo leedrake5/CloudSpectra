@@ -320,30 +320,36 @@ print(plotInput())
   
   #####PCA Analysis
   
+  xrfKReactive <- reactive({
+      xrf.pca.header <- input$show_vars
+      xrf.pca.frame <- spectra.line.table[input$show_vars]
+      xrf.pca.n <- length(xrf.pca.frame)
+      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
+      
+      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
+      xrf.k
+
+  })
+  
+  xrfPCAReactive <- reactive({
+      
+      xrf.pca.header <- input$show_vars
+      xrf.pca.frame <- spectra.line.table[input$show_vars]
+      xrf.pca.n <- length(xrf.pca.frame)
+      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
+      
+      xrf.k <- xrfKReactive()
+      
+      
+      
+      xrf.pca <- prcomp(xrf.smalls, scale.=FALSE)
+      xrf.scores <- as.data.frame(xrf.pca$x)
+      xrf.pca.results <- data.frame(spectra.line.table, xrf.k$cluster, xrf.scores)
+  })
+  
   plotInput2 <- reactive({
       
-
-  xrf.pca.header <- input$show_vars
-  xrf.pca.frame <- spectra.line.table[input$show_vars]
-  xrf.pca.n <- length(xrf.pca.frame)
-  xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-  
-  xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
-  xrf.pca <- prcomp(xrf.smalls, scale.=FALSE)
-  xrf.scores <- as.data.frame(xrf.pca$x)
-  xrf.pca.results <- data.frame(spectra.line.table, xrf.k$cluster, xrf.scores)
-  
-  xrf.pca.header <- input$show_vars
-  xrf.pca.frame <- spectra.line.table[input$show_vars]
-  xrf.pca.n <- length(xrf.pca.frame)
-  xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-  
-  xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
-  xrf.pca <- prcomp(xrf.smalls, scale.=FALSE)
-  xrf.scores <- as.data.frame(xrf.pca$x)
-  xrf.pca.results <- data.frame(spectra.line.table, xrf.k$cluster, xrf.scores)
-  
-  
+  xrf.pca.results <- xrfPCAReactive()
   
   
   regular <- ggplot(data= xrf.pca.results) +
@@ -403,29 +409,9 @@ print(plotInput())
   
   
   pcaTableInput <- reactive({
-      
-      
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
-      xrf.pca <- prcomp(xrf.smalls, scale.=FALSE)
-      xrf.scores <- as.data.frame(xrf.pca$x)
-      xrf.pca.results <- data.frame(spectra.line.table, xrf.k$cluster, xrf.scores)
-      
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
-      xrf.pca <- prcomp(xrf.smalls, scale.=FALSE)
-      xrf.scores <- as.data.frame(xrf.pca$x)
-      xrf.pca.results <- data.frame(xrf.k$cluster, xrf.scores, spectra.line.table[input$show_vars])
-      names(xrf.pca.results)[names(xrf.pca.results)=="xrf.k.cluster"] <- "K-means"
-      return(xrf.pca.results)
+      xrf.pca.results <- xrfPCAReactive()
+
+      xrf.pca.results
  
       
   })
@@ -456,14 +442,8 @@ content = function(file
 
 
 plotInput3a <- reactive({
-
-
-   xrf.pca.header <- input$show_vars
-   xrf.pca.frame <- spectra.line.table[input$show_vars]
-   xrf.pca.n <- length(xrf.pca.frame)
-   xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
    
-   xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
+   xrf.k <- xrfKReactive()
    
    
    
@@ -566,12 +546,7 @@ observeEvent(input$timeseriesact1, {
   plotInput3b <- reactive({
       
       
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
+      xrf.k <- xrfKReactive()
       
       
       
@@ -675,13 +650,7 @@ observeEvent(input$timeseriesact1, {
   plotInput3c <- reactive({
       
       
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
-      
+      xrf.k <- xrfKReactive()
       
       
       unique.spec <- seq(1, length(spectra.line.table$Spectrum), 1)
@@ -781,12 +750,7 @@ observeEvent(input$timeseriesact1, {
   plotInput3d <- reactive({
       
       
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
+      xrf.k <- xrfKReactive()
       
       
       
@@ -890,13 +854,7 @@ observeEvent(input$timeseriesact1, {
 
   plotInput3e <- reactive({
       
-      
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
+      xrf.k <- xrfKReactive()
       
       
       
@@ -1001,13 +959,8 @@ observeEvent(input$timeseriesact1, {
   plotInput4 <- reactive({
       
 
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
-      
+     xrf.k <- xrfKReactive()
+
       first.ratio <-spectra.line.table[input$elementratioa]
       second.ratio <- spectra.line.table[input$elementratiob]
       third.ratio <- spectra.line.table[input$elementratioc]
@@ -1077,12 +1030,7 @@ observeEvent(input$timeseriesact1, {
 
 plotInput5 <- reactive({
     
-    xrf.pca.header <- input$show_vars
-    xrf.pca.frame <- spectra.line.table[input$show_vars]
-    xrf.pca.n <- length(xrf.pca.frame)
-    xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-    
-    xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
+    xrf.k <- xrfKReactive()
     
     first.axis <- spectra.line.table[input$axisa]
     second.axis <- spectra.line.table[input$axisb]
@@ -1092,16 +1040,16 @@ plotInput5 <- reactive({
     colnames(axis.frame) <- gsub("[.]", "", c(substr(input$axisa, 1, 2), substr(input$axisb, 1, 2), substr(input$axisc, 1, 2), "Cluster"))
     
     ternaryplot1 <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
-    geom_point() +
+    geom_point(size=input$ternpointsize) +
     theme_light()
     
     ternaryplot2 <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
     geom_density_tern() +
-    geom_point() +
+    geom_point(size=input$ternpointsize) +
     theme_light()
     
     ternaryplotcluster <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
-    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster))) +
+    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster)), size=input$ternpointsize) +
     scale_shape_discrete("Cluster") +
     scale_colour_discrete("Cluster") +
     theme(legend.position="none") +
@@ -1109,7 +1057,7 @@ plotInput5 <- reactive({
     
     ternaryplotclusterellipse <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
     geom_density_tern() +
-    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster))) +
+    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster)), size=input$ternpointsize) +
     scale_shape_discrete("Cluster") +
     scale_colour_discrete("Cluster") +
     theme_light()
