@@ -989,7 +989,7 @@ observeEvent(input$timeseriesact1, {
       theme(legend.position="none")
       
       cluster.ratio.ellipse.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
-      stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=ratio.frame$Cluster, linetype=as.factor(ratio.frame$Cluster))) +
+      stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=as.factor(ratio.frame$Cluster), linetype=as.factor(ratio.frame$Cluster))) +
       geom_point(aes(colour=as.factor(ratio.frame$Cluster)), lwd=input$spotsize2) +
       theme_light() +
       theme(legend.position="none")+
