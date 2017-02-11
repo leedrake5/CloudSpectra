@@ -209,7 +209,8 @@ dblclick = "plot1_dblclick", height = 500, width= 700,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
-)))
+))),
+tabPanel("Table", DT::dataTableOutput('xrfpcatable'))
 
 
 ))

@@ -347,7 +347,7 @@ print(plotInput())
   
   
   regular <- ggplot(data= xrf.pca.results) +
-  geom_point(aes(PC1, PC2, colour=xrf.k.cluster), size = input$spotsize) +
+  geom_point(aes(PC1, PC2, colour=as.factor(xrf.k.cluster), shape=as.factor(xrf.k.cluster)), size = input$spotsize) +
   scale_x_continuous("Principle Component 1") +
   scale_y_continuous("Principle Component 2") +
   theme_light() +
@@ -355,31 +355,28 @@ print(plotInput())
   theme(axis.text.y = element_text(size=15)) +
   theme(axis.title.x = element_text(size=15)) +
   theme(axis.title.y = element_text(size=15, angle=90)) +
-  theme(legend.position="none") +
   theme(plot.title=element_text(size=20)) +
   theme(legend.title=element_text(size=15)) +
   theme(legend.text=element_text(size=15)) +
-  guides(colour=guide_legend(title="K-Means")) +
-  scale_colour_gradientn(colours=rainbow(7))
+  guides(colour=guide_legend(title="K-Means"), shape=guide_legend(title="K-Means"))
   
   ellipse <- ggplot(data= xrf.pca.results)+
-  geom_point(aes(PC1, PC2, colour=xrf.k.cluster), size = input$spotsize) +
+  geom_point(aes(PC1, PC2, colour=as.factor(xrf.k.cluster), shape=as.factor(xrf.k.cluster)), size = input$spotsize) +
   scale_x_continuous("Principle Component 1") +
   scale_y_continuous("Principle Component 2") +
   theme_light() +
-  stat_ellipse(aes(PC1, PC2, colour=xrf.k.cluster, linetype=as.factor(xrf.k.cluster))) +
+  stat_ellipse(aes(PC1, PC2, colour=as.factor(xrf.k.cluster), linetype=as.factor(xrf.k.cluster))) +
   theme(axis.text.x = element_text(size=15)) +
   theme(axis.text.y = element_text(size=15)) +
   theme(axis.title.x = element_text(size=15)) +
   theme(axis.title.y = element_text(size=15, angle=90)) +
-  theme(legend.position="none") +
   theme(plot.title=element_text(size=20)) +
   theme(legend.title=element_text(size=15)) +
   theme(legend.text=element_text(size=15)) +
   guides(colour=guide_legend(title="K-Means")) +
-  scale_colour_gradientn(colours=rainbow(7)) +
-  guides(linetype=FALSE)
-  
+  guides(linetype=FALSE) +
+  guides(colour=guide_legend(title="K-Means"), shape=guide_legend(title="K-Means"))
+
   if (input$elipseplot1 == FALSE) {
       regular
   } else if (input$elipseplot1 == TRUE) {
@@ -435,8 +432,10 @@ print(plotInput())
 
 
 
-output$xrfpcatable <- renderTable({
-    pcaTableInput()
+output$xrfpcatable <- DT::renderDataTable({
+    
+    df <- pcaTableInput()
+    DT::datatable(df)
     
 })
 
@@ -522,10 +521,8 @@ scale_y_continuous(trendy)
 
 
 cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-geom_line(aes(colour = Cluster), lwd=input$linesize) +
-theme_light() +
-scale_colour_gradientn(colours=rainbow(7))
-
+geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
+theme_light()
 
 
 if (input$timecolour == "Black") {
@@ -632,9 +629,8 @@ observeEvent(input$timeseriesact1, {
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = Cluster), lwd=input$linesize) +
-      theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
+      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
+      theme_light()
       
       
       
@@ -742,10 +738,8 @@ observeEvent(input$timeseriesact1, {
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = Cluster), lwd=input$linesize) +
-      theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
-      
+      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
+      theme_light()
       
       
       if (input$timecolour == "Black") {
@@ -850,10 +844,8 @@ observeEvent(input$timeseriesact1, {
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = Cluster), lwd=input$linesize) +
-      theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
-      
+      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
+      theme_light()
       
       
       if (input$timecolour == "Black") {
@@ -962,10 +954,8 @@ observeEvent(input$timeseriesact1, {
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = Cluster), lwd=input$linesize) +
-      theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
-      
+      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
+      theme_light()
       
       
       if (input$timecolour == "Black") {
@@ -1041,16 +1031,14 @@ observeEvent(input$timeseriesact1, {
       theme_light()
       
       cluster.ratio.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
-      geom_point(aes(colour=ratio.frame$Cluster), lwd=input$spotsize2) +
+      geom_point(aes(colour=as.factor(ratio.frame$Cluster)), lwd=input$spotsize2) +
       theme_light() +
-      scale_colour_gradientn(colours=rainbow(7)) +
       theme(legend.position="none")
       
       cluster.ratio.ellipse.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
       stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=ratio.frame$Cluster, linetype=as.factor(ratio.frame$Cluster))) +
-      geom_point(aes(colour=ratio.frame$Cluster), lwd=input$spotsize2) +
+      geom_point(aes(colour=as.factor(ratio.frame$Cluster)), lwd=input$spotsize2) +
       theme_light() +
-      scale_colour_gradientn(colours=rainbow(7)) +
       theme(legend.position="none")+
       guides(linetype=FALSE)
       
@@ -1113,15 +1101,17 @@ plotInput5 <- reactive({
     theme_light()
     
     ternaryplotcluster <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
-    geom_point(aes_string(colour = colnames(axis.frame)[4])) +
-    scale_colour_gradientn(colours=rainbow(7)) +
+    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster))) +
+    scale_shape_discrete("Cluster") +
+    scale_colour_discrete("Cluster") +
     theme(legend.position="none") +
     theme_light()
     
     ternaryplotclusterellipse <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
     geom_density_tern() +
-    geom_point(aes_string(colour = colnames(axis.frame)[4])) +
-    scale_colour_gradientn(colours=rainbow(7)) +
+    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster))) +
+    scale_shape_discrete("Cluster") +
+    scale_colour_discrete("Cluster") +
     theme_light()
 
     if (input$ternarycolour == "Black" && input$terndensityplot==FALSE) {

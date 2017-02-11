@@ -9,8 +9,8 @@ You can run this software from the R console with:
 ```
 if (!require(devtools))
   install.packages("devtools")
-devtools::install_github("rstudio/leaflet")
-shiny::runGitHub("leedrake5/congressImpact")
+devtools::install_github("leedrake5/CloudSpectra”)
+shiny::runGitHub("leedrake5/CloudSpectra")
 ```
 
 This software requires external processing packages in R. If you are running this for the first time, copy and paste the following:
