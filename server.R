@@ -7,7 +7,7 @@ library(data.table)
 library(ggtern)
 library(ggplot2)
 library(shiny)
-
+library(shinysky)
 
 
 
@@ -213,31 +213,32 @@ myfiles.x = pblapply(inFile$datapath, read_csv_filename_x)
              
              
              ###Background Subtraction
-             data.n <- as.data.frame(dcast(data=data, formula=Energy~Spectrum, fun.aggregate = sum,value.var = "CPS"))
+             # data.n <- as.data.frame(dcast(data=data, formula=Energy~Spectrum, fun.aggregate = sum,value.var = "CPS"))
              
-             background.subtracted <- pbapply(data.n, 2, Hodder.v)
-             background.subtracted <- as.data.frame(background.subtracted)
-             background.subtracted$Energy <- data.n$Energy
+             # background.subtracted <- pbapply(data.n, 2, Hodder.v)
+             #background.subtracted <- as.data.frame(background.subtracted)
+             # background.subtracted$Energy <- data.n$Energy
              
-             background.melt <- melt(background.subtracted, id="Energy")
-             colnames(background.melt) <- c("Energy", "Spectrum", "CPS")
+             # background.melt <- melt(background.subtracted, id="Energy")
+             # colnames(background.melt) <- c("Energy", "Spectrum", "CPS")
              
              
-             transformed.spectral.plot <-  qplot(background.melt$Energy+1, SMA(background.melt$CPS, 10), xlab = "Energy (keV)", ylab = "CPS", geom="line", colour=background.melt$Spectrum)+
-             theme_light()+
-             theme(legend.position="bottom") +
-             geom_segment(aes(x=element$Line, xend=element$Line, y = 0, yend=intensity.norm), colour="grey50", linetype=2)  +
-             scale_colour_discrete("Spectrum") +
-             coord_cartesian(xlim = ranges$x, ylim = ranges$y)
+             #transformed.spectral.plot <-  qplot(background.melt$Energy+1, SMA(background.melt$CPS, 10), xlab = "Energy (keV)", ylab = "CPS", geom="line", colour=background.melt$Spectrum)+
+             # theme_light()+
+             # theme(legend.position="bottom") +
+             # geom_segment(aes(x=element$Line, xend=element$Line, y = 0, yend=intensity.norm), colour="grey50", linetype=2)  +
+             # scale_colour_discrete("Spectrum") +
+             # coord_cartesian(xlim = ranges$x, ylim = ranges$y)
 
 
-             if (input$backgroundsubtract == FALSE) {
-                 spectral.plot
-             } else if (input$backgroundsubtract == TRUE) {
-                 transformed.spectral.plot
-             }
+# if (input$backgroundsubtract == FALSE) {
+#   spectral.plot
 
-             
+#} else if (input$backgroundsubtract == TRUE) {
+#   transformed.spectral.plot
+# }
+
+spectral.plot
        
 
          })
@@ -307,6 +308,40 @@ print(plotInput())
 
   })
   
+  
+  hotableInput <- reactive({
+      empty.line.table <-  spectra.line.table[input$show_vars] * 0
+      empty.line.table <- empty.line.table[1:2]
+      colnames(empty.line.table) <- c("Qualitative", "Quantitative")
+      empty.line.table$Spectrum <- spectra.line.table$Spectrum
+      na.vector <- rep("NA", length(empty.line.table$Qualitative))
+      
+      empty.line.table <- data.frame(empty.line.table$Spectrum, na.vector, empty.line.table$Quantitative)
+      colnames(empty.line.table) <- c("Spectrum", "Qualitative", "Quantitative")
+
+
+      empty.line.table
+      
+  })
+  
+  output$hotable1 <- renderHotable(exp={
+     print(hotableInput())}, readOnly=F)
+  
+  
+  observeEvent(input$hotableprocess, {
+  })
+  
+  
+  renderHotable <- reactive({
+      
+      hot.to.df(input$hotable1) # this will convert your input into a data.frame
+      
+      
+      
+  })
+  
+
+  
 
   
   output$downloadData <- downloadHandler(
@@ -321,39 +356,86 @@ print(plotInput())
   #####PCA Analysis
   
   xrfKReactive <- reactive({
+      
+
       xrf.pca.header <- input$show_vars
       xrf.pca.frame <- spectra.line.table[input$show_vars]
       xrf.pca.n <- length(xrf.pca.frame)
       xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
       
       xrf.k <- kmeans(xrf.smalls, input$knum, iter.max=1000, nstart=15, algorithm=c("Hartigan-Wong"))
-      xrf.k
+      xrf.pca <- prcomp(xrf.smalls, scale.=FALSE)
+      
+      xrf.scores <- as.data.frame(xrf.pca$x)
+      
+      cluster.frame <- data.frame(spectra.line.table$Spectrum, xrf.k$cluster, xrf.scores)
+      
+      colnames(cluster.frame) <- c("Assay", "Cluster", names(xrf.scores))
+      
+      cluster.frame
+
+
 
   })
   
   xrfPCAReactive <- reactive({
       
-      xrf.pca.header <- input$show_vars
-      xrf.pca.frame <- spectra.line.table[input$show_vars]
-      xrf.pca.n <- length(xrf.pca.frame)
-      xrf.smalls <- xrf.pca.frame[2:xrf.pca.n]
-      
-      xrf.k <- xrfKReactive()
       
       
+
       
-      xrf.pca <- prcomp(xrf.smalls, scale.=FALSE)
-      xrf.scores <- as.data.frame(xrf.pca$x)
-      xrf.pca.results <- data.frame(spectra.line.table, xrf.k$cluster, xrf.scores)
+      xrf.clusters <- xrfKReactive()
+      
+      element.counts <- spectra.line.table[input$show_vars]
+      
+      
+      
+      xrf.pca.results <- data.frame(xrf.clusters, element.counts)
+      
+      xrf.pca.results
   })
   
   plotInput2 <- reactive({
       
-  xrf.pca.results <- xrfPCAReactive()
+  xrf.pca.results <- xrfKReactive()
+  
+  xrf.k <- xrfKReactive()
+  
+  quality.table <- renderHotable()
+  
+  colour.table <- data.frame(xrf.k$Cluster, quality.table)
+  colnames(colour.table) <- c("Cluster", names(quality.table))
   
   
-  regular <- ggplot(data= xrf.pca.results) +
-  geom_point(aes(PC1, PC2, colour=as.factor(xrf.k.cluster), shape=as.factor(xrf.k.cluster)), size = input$spotsize) +
+  
+  
+  unique.spec <- seq(1, length(colour.table$Spectrum), 1)
+  null <- rep(1, length(unique.spec))
+  
+  spectra.line.table$Cluster <- xrf.k$Cluster
+  spectra.line.table$PC1 <- xrf.k$PC1
+  spectra.line.table$PC2 <- xrf.k$PC2
+  spectra.line.table$Qualitative <- quality.table$Qualitative
+  spectra.line.table$Quantitative <- quality.table$Quantitative
+  
+  basic <- ggplot(data= spectra.line.table) +
+  geom_point(aes(PC1, PC2), size = input$spotsize) +
+  scale_x_continuous("Principle Component 1") +
+  scale_y_continuous("Principle Component 2") +
+  theme_light() +
+  theme(axis.text.x = element_text(size=15)) +
+  theme(axis.text.y = element_text(size=15)) +
+  theme(axis.title.x = element_text(size=15)) +
+  theme(axis.title.y = element_text(size=15, angle=90)) +
+  theme(plot.title=element_text(size=20)) +
+  theme(legend.title=element_text(size=15)) +
+  theme(legend.text=element_text(size=15))
+  #guides(colour=guide_legend(title="K-Means"), shape=guide_legend(title="K-Means"))
+  
+  
+  regular <- ggplot(data= spectra.line.table) +
+  geom_point(aes(PC1, PC2, colour=as.factor(Cluster), shape=as.factor(Cluster)), size = input$spotsize+1) +
+  geom_point(aes(PC1, PC2), colour="grey30", size=input$spotsize-2) +
   scale_x_continuous("Principle Component 1") +
   scale_y_continuous("Principle Component 2") +
   theme_light() +
@@ -364,30 +446,96 @@ print(plotInput())
   theme(plot.title=element_text(size=20)) +
   theme(legend.title=element_text(size=15)) +
   theme(legend.text=element_text(size=15)) +
-  guides(colour=guide_legend(title="K-Means"), shape=guide_legend(title="K-Means"))
-  
-  ellipse <- ggplot(data= xrf.pca.results)+
-  geom_point(aes(PC1, PC2, colour=as.factor(xrf.k.cluster), shape=as.factor(xrf.k.cluster)), size = input$spotsize) +
-  scale_x_continuous("Principle Component 1") +
-  scale_y_continuous("Principle Component 2") +
-  theme_light() +
-  stat_ellipse(aes(PC1, PC2, colour=as.factor(xrf.k.cluster), linetype=as.factor(xrf.k.cluster))) +
-  theme(axis.text.x = element_text(size=15)) +
-  theme(axis.text.y = element_text(size=15)) +
-  theme(axis.title.x = element_text(size=15)) +
-  theme(axis.title.y = element_text(size=15, angle=90)) +
-  theme(plot.title=element_text(size=20)) +
-  theme(legend.title=element_text(size=15)) +
-  theme(legend.text=element_text(size=15)) +
-  guides(colour=guide_legend(title="K-Means")) +
-  guides(linetype=FALSE) +
-  guides(colour=guide_legend(title="K-Means"), shape=guide_legend(title="K-Means"))
+  scale_shape_manual("Cluster", values=1:nlevels(as.factor(spectra.line.table$Cluster))) +
+  scale_colour_discrete("Cluster")
 
-  if (input$elipseplot1 == FALSE) {
-      regular
-  } else if (input$elipseplot1 == TRUE) {
+
+  ellipse <- ggplot(data= spectra.line.table)+
+  geom_point(aes(PC1, PC2, colour=as.factor(Cluster), shape=as.factor(Cluster)), size = input$spotsize+1) +
+  geom_point(aes(PC1, PC2), colour="grey30", size=input$spotsize-2) +
+  scale_x_continuous("Principle Component 1") +
+  scale_y_continuous("Principle Component 2") +
+  theme_light() +
+  stat_ellipse(aes(PC1, PC2, colour=as.factor(Cluster), linetype=as.factor(Cluster))) +
+  theme(axis.text.x = element_text(size=15)) +
+  theme(axis.text.y = element_text(size=15)) +
+  theme(axis.title.x = element_text(size=15)) +
+  theme(axis.title.y = element_text(size=15, angle=90)) +
+  theme(plot.title=element_text(size=20)) +
+  theme(legend.title=element_text(size=15)) +
+  theme(legend.text=element_text(size=15)) +
+  guides(linetype=FALSE) +
+  scale_shape_manual("Cluster", values=1:nlevels(as.factor(spectra.line.table$Cluster))) +
+  scale_colour_discrete("Cluster")
+
+
+  qual.regular <- ggplot(data= spectra.line.table) +
+  geom_point(aes(PC1, PC2, colour=as.factor(Qualitative), shape=as.factor(Qualitative)), size = input$spotsize+1) +
+  geom_point(aes(PC1, PC2), colour="grey30", size=input$spotsize-2) +
+  scale_x_continuous("Principle Component 1") +
+  scale_y_continuous("Principle Component 2") +
+  theme_light() +
+  theme(axis.text.x = element_text(size=15)) +
+  theme(axis.text.y = element_text(size=15)) +
+  theme(axis.title.x = element_text(size=15)) +
+  theme(axis.title.y = element_text(size=15, angle=90)) +
+  theme(plot.title=element_text(size=20)) +
+  theme(legend.title=element_text(size=15)) +
+  theme(legend.text=element_text(size=15)) +
+  scale_shape_manual("Qualitative", values=1:nlevels(as.factor(spectra.line.table$Qualitative))) +
+  scale_colour_discrete("Qualitative")
+  
+  
+  qual.ellipse <- ggplot(data= spectra.line.table)+
+  geom_point(aes(PC1, PC2, colour=as.factor(Qualitative), shape=as.factor(Qualitative)), size = input$spotsize+1) +
+  geom_point(aes(PC1, PC2), colour="grey30", size=input$spotsize-2) +
+  scale_x_continuous("Principle Component 1") +
+  scale_y_continuous("Principle Component 2") +
+  theme_light() +
+  stat_ellipse(aes(PC1, PC2, colour=as.factor(Qualitative), linetype=as.factor(Qualitative))) +
+  theme(axis.text.x = element_text(size=15)) +
+  theme(axis.text.y = element_text(size=15)) +
+  theme(axis.title.x = element_text(size=15)) +
+  theme(axis.title.y = element_text(size=15, angle=90)) +
+  theme(plot.title=element_text(size=20)) +
+  theme(legend.title=element_text(size=15)) +
+  theme(legend.text=element_text(size=15)) +
+  guides(linetype=FALSE) +
+  scale_shape_manual("Qualitative", values=1:nlevels(as.factor(spectra.line.table$Qualitative))) +
+  scale_colour_discrete("Qualitative")
+  
+  
+  quant.regular <- ggplot(data= spectra.line.table) +
+  geom_point(aes(PC1, PC2, colour=Quantitative), size = input$spotsize) +
+  scale_x_continuous("Principle Component 1") +
+  scale_y_continuous("Principle Component 2") +
+  theme_light() +
+  theme(axis.text.x = element_text(size=15)) +
+  theme(axis.text.y = element_text(size=15)) +
+  theme(axis.title.x = element_text(size=15)) +
+  theme(axis.title.y = element_text(size=15, angle=90)) +
+  theme(plot.title=element_text(size=20)) +
+  theme(legend.title=element_text(size=15)) +
+  theme(legend.text=element_text(size=15)) +
+  scale_colour_gradientn("Quantitative", colours=rainbow(length(spectra.line.table$Quantitative))) 
+
+
+  if (input$elipseplot1 == FALSE && input$pcacolour == "black") {
+      basic
+  } else if (input$elipseplot1 == TRUE && input$pcacolour == "Cluster") {
       ellipse
+  } else if (input$elipseplot1 == FALSE && input$pcacolour == "Cluster") {
+      regular
+  } else if (input$elipseplot1 == TRUE && input$pcacolour == "Qualitative") {
+      qual.ellipse
+  } else if (input$elipseplot1 == FALSE && input$pcacolour == "Qualitative") {
+      qual.regular
+  } else if (input$elipseplot1 == TRUE && input$pcacolour == "Quantitative") {
+      quant.regular
+  } else if (input$elipseplot1 == FALSE && input$pcacolour == "Quantitative") {
+      quant.regular
   }
+
 
 
   })
@@ -408,19 +556,35 @@ print(plotInput())
   
   
   
-  pcaTableInput <- reactive({
+  pcaTableInputFull <- reactive({
       xrf.pca.results <- xrfPCAReactive()
 
       xrf.pca.results
  
       
   })
-
-
-
-output$xrfpcatable <- DT::renderDataTable({
+  
+  
+  
+  
+  output$xrfpcatable <- DT::renderDataTable({
+      
     
-    df <- pcaTableInput()
+      
+      df <- xrfKReactive()
+      
+      
+
+      DT::datatable(df)
+      
+  })
+
+
+
+
+output$xrfpcatablefull <- DT::renderDataTable({
+    
+    df <- pcaTableInputFull()
     DT::datatable(df)
     
 })
@@ -440,15 +604,47 @@ content = function(file
 
 
 
+outApp <- reactive({
+    
+    xrf.k <- xrfKReactive()
+    
+    quality.table <- renderHotable()
+    
+    colour.table <- data.frame(xrf.k$Cluster, quality.table)
+    colnames(colour.table) <- c("Cluster", names(quality.table))
+    
+    names(colour.table)
+    
+    
+})
+
+
+
+output$inApp <- renderUI({
+    selectInput(inputId = "app", label = h4("Application"), choices =  outApp())
+})
+
+
+
 
 plotInput3a <- reactive({
    
    xrf.k <- xrfKReactive()
    
+   quality.table <- renderHotable()
    
+   colour.table <- data.frame(xrf.k$Cluster, quality.table)
+   colnames(colour.table) <- c("Cluster", names(quality.table))
+
+
+
    
-   unique.spec <- seq(1, length(spectra.line.table$Spectrum), 1)
+   unique.spec <- seq(1, length(colour.table$Spectrum), 1)
    null <- rep(1, length(unique.spec))
+   
+   spectra.line.table$Cluster <- xrf.k$Cluster
+   spectra.line.table$Qualitative <- quality.table$Qualitative
+   spectra.line.table$Quantitative <- quality.table$Quantitative
 
 
    
@@ -458,8 +654,8 @@ plotInput3a <- reactive({
 
    interval <- unique.spec*as.numeric(input$intervalmm)
 
-   spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], xrf.k$cluster)
-   colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster")
+   spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+   colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
    
    
   trendy <-  as.vector((if(input$elementnorm=="None") {
@@ -482,27 +678,87 @@ plotInput3a <- reactive({
 
 black.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
 geom_line(colour = "black", lwd=input$linesize) +
-theme_light()
+theme_light() +
+theme(axis.text.x = element_text(size=15)) +
+theme(axis.text.y = element_text(size=15)) +
+theme(axis.title.x = element_text(size=15)) +
+theme(axis.title.y = element_text(size=15, angle=90)) +
+theme(plot.title=element_text(size=20)) +
+theme(legend.title=element_text(size=15)) +
+theme(legend.text=element_text(size=15))
 
 smooth.time.series <- qplot(spectra.timeseries.table$Interval, SMA(spectra.timeseries.table$Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="point") +
 theme_light() +
-stat_smooth()
+stat_smooth() +
+theme(axis.text.x = element_text(size=15)) +
+theme(axis.text.y = element_text(size=15)) +
+theme(axis.title.x = element_text(size=15)) +
+theme(axis.title.y = element_text(size=15, angle=90)) +
+theme(plot.title=element_text(size=20)) +
+theme(legend.title=element_text(size=15)) +
+theme(legend.text=element_text(size=15))
 
 ramp.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
 geom_line(aes(colour = Selected), lwd=input$linesize) +
 theme_light() +
-scale_colour_gradientn(colours=rainbow(7))
+scale_colour_gradientn(colours=rainbow(7)) +
+theme(axis.text.x = element_text(size=15)) +
+theme(axis.text.y = element_text(size=15)) +
+theme(axis.title.x = element_text(size=15)) +
+theme(axis.title.y = element_text(size=15, angle=90)) +
+theme(plot.title=element_text(size=20)) +
+theme(legend.title=element_text(size=15)) +
+theme(legend.text=element_text(size=15))
 
 area.time.series <- ggplot(spectra.timeseries.table, aes(Interval)) +
 theme_classic() +
 geom_area(aes(y=Selected, colour="grey60", fill="grey60"), alpha=0.6) +
 scale_x_continuous("Length (mm)") +
-scale_y_continuous(trendy)
+scale_y_continuous(trendy) +
+theme(axis.text.x = element_text(size=15)) +
+theme(axis.text.y = element_text(size=15)) +
+theme(axis.title.x = element_text(size=15)) +
+theme(axis.title.y = element_text(size=15, angle=90)) +
+theme(plot.title=element_text(size=20)) +
+theme(legend.title=element_text(size=15)) +
+theme(legend.text=element_text(size=15))
 
 
 cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
-theme_light()
+geom_point(aes(colour = as.factor(Cluster)), size=input$pointsize) +
+scale_colour_discrete("Cluster") +
+theme_light() +
+theme(axis.text.x = element_text(size=15)) +
+theme(axis.text.y = element_text(size=15)) +
+theme(axis.title.x = element_text(size=15)) +
+theme(axis.title.y = element_text(size=15, angle=90)) +
+theme(plot.title=element_text(size=20)) +
+theme(legend.title=element_text(size=15)) +
+theme(legend.text=element_text(size=15))
+
+qualitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+geom_point(aes(colour = as.factor(Qualitative)), lwd=input$pointsize) +
+scale_colour_discrete("Qualitative") +
+theme_light() +
+theme(axis.text.x = element_text(size=15)) +
+theme(axis.text.y = element_text(size=15)) +
+theme(axis.title.x = element_text(size=15)) +
+theme(axis.title.y = element_text(size=15, angle=90)) +
+theme(plot.title=element_text(size=20)) +
+theme(legend.title=element_text(size=15)) +
+theme(legend.text=element_text(size=15))
+
+quantitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+geom_point(aes(colour = Quantitative), lwd=input$pointsize) +
+scale_colour_gradientn("Quantitative", colours=rainbow(length(spectra.line.table$Quantitative))) +
+theme_light() +
+theme(axis.text.x = element_text(size=15)) +
+theme(axis.text.y = element_text(size=15)) +
+theme(axis.title.x = element_text(size=15)) +
+theme(axis.title.y = element_text(size=15, angle=90)) +
+theme(plot.title=element_text(size=20)) +
+theme(legend.title=element_text(size=15)) +
+theme(legend.text=element_text(size=15))
 
 
 if (input$timecolour == "Black") {
@@ -513,6 +769,10 @@ if (input$timecolour == "Black") {
     ramp.time.series
 } else if (input$timecolour == "Cluster") {
     cluster.time.series
+} else if (input$timecolour == "Qualitative") {
+    qualitative.time.series
+} else if (input$timecolour == "Quantitative") {
+    quantitative.time.series
 } else if (input$timecolour == "Area") {
     area.time.series
 }
@@ -548,11 +808,20 @@ observeEvent(input$timeseriesact1, {
       
       xrf.k <- xrfKReactive()
       
+      quality.table <- renderHotable()
+      
+      colour.table <- data.frame(xrf.k$Cluster, quality.table)
+      colnames(colour.table) <- c("Cluster", names(quality.table))
       
       
-      unique.spec <- seq(1, length(spectra.line.table$Spectrum), 1)
+      
+      
+      unique.spec <- seq(1, length(colour.table$Spectrum), 1)
       null <- rep(1, length(unique.spec))
       
+      spectra.line.table$Cluster <- xrf.k$Cluster
+      spectra.line.table$Qualitative <- quality.table$Qualitative
+      spectra.line.table$Quantitative <- quality.table$Quantitative
       
       
       spectra.line.table.norm <- data.frame(spectra.line.table, null)
@@ -561,8 +830,8 @@ observeEvent(input$timeseriesact1, {
       
       interval <- unique.spec*as.numeric(input$intervalmm)
       
-      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], xrf.k$cluster)
-      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster")
+      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
       
       
       trendy <-  as.vector((if(input$elementnorm=="None") {
@@ -582,31 +851,89 @@ observeEvent(input$timeseriesact1, {
       
       
       
-      
       black.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(colour = "black", lwd=input$linesize) +
-      theme_light()
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       smooth.time.series <- qplot(spectra.timeseries.table$Interval, SMA(spectra.timeseries.table$Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="point") +
       theme_light() +
-      stat_smooth()
+      stat_smooth() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       ramp.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(aes(colour = Selected), lwd=input$linesize) +
       theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
+      scale_colour_gradientn(colours=rainbow(7)) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       area.time.series <- ggplot(spectra.timeseries.table, aes(Interval)) +
       theme_classic() +
       geom_area(aes(y=Selected, colour="grey60", fill="grey60"), alpha=0.6) +
       scale_x_continuous("Length (mm)") +
-      scale_y_continuous(trendy)
+      scale_y_continuous(trendy) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
-      theme_light()
+      geom_point(aes(colour = as.factor(Cluster)), size=input$pointsize) +
+      scale_colour_discrete("Cluster") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
+      qualitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = as.factor(Qualitative)), lwd=input$pointsize) +
+      scale_colour_discrete("Qualitative") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      quantitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = Quantitative), lwd=input$pointsize) +
+      scale_colour_gradientn("Quantitative", colours=rainbow(length(spectra.line.table$Quantitative))) +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       if (input$timecolour == "Black") {
@@ -617,10 +944,13 @@ observeEvent(input$timeseriesact1, {
           ramp.time.series
       } else if (input$timecolour == "Cluster") {
           cluster.time.series
+      } else if (input$timecolour == "Qualitative") {
+          qualitative.time.series
+      } else if (input$timecolour == "Quantitative") {
+          quantitative.time.series
       } else if (input$timecolour == "Area") {
           area.time.series
       }
-      
       
       
       
@@ -652,10 +982,20 @@ observeEvent(input$timeseriesact1, {
       
       xrf.k <- xrfKReactive()
       
+      quality.table <- renderHotable()
       
-      unique.spec <- seq(1, length(spectra.line.table$Spectrum), 1)
+      colour.table <- data.frame(xrf.k$Cluster, quality.table)
+      colnames(colour.table) <- c("Cluster", names(quality.table))
+      
+      
+      
+      
+      unique.spec <- seq(1, length(colour.table$Spectrum), 1)
       null <- rep(1, length(unique.spec))
       
+      spectra.line.table$Cluster <- xrf.k$Cluster
+      spectra.line.table$Qualitative <- quality.table$Qualitative
+      spectra.line.table$Quantitative <- quality.table$Quantitative
       
       
       spectra.line.table.norm <- data.frame(spectra.line.table, null)
@@ -664,8 +1004,8 @@ observeEvent(input$timeseriesact1, {
       
       interval <- unique.spec*as.numeric(input$intervalmm)
       
-      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], xrf.k$cluster)
-      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster")
+      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
       
       
       trendy <-  as.vector((if(input$elementnorm=="None") {
@@ -677,38 +1017,89 @@ observeEvent(input$timeseriesact1, {
       
       
       
-      
-      
-      
-      
-      
-      
-      
-      
-      
       black.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(colour = "black", lwd=input$linesize) +
-      theme_light()
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       smooth.time.series <- qplot(spectra.timeseries.table$Interval, SMA(spectra.timeseries.table$Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="point") +
       theme_light() +
-      stat_smooth()
+      stat_smooth() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       ramp.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(aes(colour = Selected), lwd=input$linesize) +
       theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
+      scale_colour_gradientn(colours=rainbow(7)) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       area.time.series <- ggplot(spectra.timeseries.table, aes(Interval)) +
       theme_classic() +
       geom_area(aes(y=Selected, colour="grey60", fill="grey60"), alpha=0.6) +
       scale_x_continuous("Length (mm)") +
-      scale_y_continuous(trendy)
+      scale_y_continuous(trendy) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
-      theme_light()
+      geom_point(aes(colour = as.factor(Cluster)), size=input$pointsize) +
+      scale_colour_discrete("Cluster") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      qualitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = as.factor(Qualitative)), lwd=input$pointsize) +
+      scale_colour_discrete("Qualitative") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      quantitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = Quantitative), lwd=input$pointsize) +
+      scale_colour_gradientn("Quantitative", colours=rainbow(length(spectra.line.table$Quantitative))) +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       if (input$timecolour == "Black") {
@@ -719,12 +1110,14 @@ observeEvent(input$timeseriesact1, {
           ramp.time.series
       } else if (input$timecolour == "Cluster") {
           cluster.time.series
+      } else if (input$timecolour == "Qualitative") {
+          qualitative.time.series
+      } else if (input$timecolour == "Quantitative") {
+          quantitative.time.series
       } else if (input$timecolour == "Area") {
           area.time.series
       }
-      
-      
-      
+
       
   })
   
@@ -752,11 +1145,20 @@ observeEvent(input$timeseriesact1, {
       
       xrf.k <- xrfKReactive()
       
+      quality.table <- renderHotable()
+      
+      colour.table <- data.frame(xrf.k$Cluster, quality.table)
+      colnames(colour.table) <- c("Cluster", names(quality.table))
       
       
-      unique.spec <- seq(1, length(spectra.line.table$Spectrum), 1)
+      
+      
+      unique.spec <- seq(1, length(colour.table$Spectrum), 1)
       null <- rep(1, length(unique.spec))
       
+      spectra.line.table$Cluster <- xrf.k$Cluster
+      spectra.line.table$Qualitative <- quality.table$Qualitative
+      spectra.line.table$Quantitative <- quality.table$Quantitative
       
       
       spectra.line.table.norm <- data.frame(spectra.line.table, null)
@@ -765,8 +1167,8 @@ observeEvent(input$timeseriesact1, {
       
       interval <- unique.spec*as.numeric(input$intervalmm)
       
-      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], xrf.k$cluster)
-      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster")
+      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
       
       
       trendy <-  as.vector((if(input$elementnorm=="None") {
@@ -776,40 +1178,89 @@ observeEvent(input$timeseriesact1, {
       }))
       
       
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
       black.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(colour = "black", lwd=input$linesize) +
-      theme_light()
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       smooth.time.series <- qplot(spectra.timeseries.table$Interval, SMA(spectra.timeseries.table$Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="point") +
       theme_light() +
-      stat_smooth()
+      stat_smooth() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       ramp.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(aes(colour = Selected), lwd=input$linesize) +
       theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
+      scale_colour_gradientn(colours=rainbow(7)) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       area.time.series <- ggplot(spectra.timeseries.table, aes(Interval)) +
       theme_classic() +
       geom_area(aes(y=Selected, colour="grey60", fill="grey60"), alpha=0.6) +
       scale_x_continuous("Length (mm)") +
-      scale_y_continuous(trendy)
+      scale_y_continuous(trendy) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
-      theme_light()
+      geom_point(aes(colour = as.factor(Cluster)), size=input$pointsize) +
+      scale_colour_discrete("Cluster") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      qualitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = as.factor(Qualitative)), lwd=input$pointsize) +
+      scale_colour_discrete("Qualitative") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      quantitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = Quantitative), lwd=input$pointsize) +
+      scale_colour_gradientn("Quantitative", colours=rainbow(length(spectra.line.table$Quantitative))) +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       if (input$timecolour == "Black") {
@@ -820,12 +1271,14 @@ observeEvent(input$timeseriesact1, {
           ramp.time.series
       } else if (input$timecolour == "Cluster") {
           cluster.time.series
+      } else if (input$timecolour == "Qualitative") {
+          qualitative.time.series
+      } else if (input$timecolour == "Quantitative") {
+          quantitative.time.series
       } else if (input$timecolour == "Area") {
           area.time.series
       }
-      
-      
-      
+
       
   })
   
@@ -856,11 +1309,20 @@ observeEvent(input$timeseriesact1, {
       
       xrf.k <- xrfKReactive()
       
+      quality.table <- renderHotable()
+      
+      colour.table <- data.frame(xrf.k$Cluster, quality.table)
+      colnames(colour.table) <- c("Cluster", names(quality.table))
       
       
-      unique.spec <- seq(1, length(spectra.line.table$Spectrum), 1)
+      
+      
+      unique.spec <- seq(1, length(colour.table$Spectrum), 1)
       null <- rep(1, length(unique.spec))
       
+      spectra.line.table$Cluster <- xrf.k$Cluster
+      spectra.line.table$Qualitative <- quality.table$Qualitative
+      spectra.line.table$Quantitative <- quality.table$Quantitative
       
       
       spectra.line.table.norm <- data.frame(spectra.line.table, null)
@@ -869,8 +1331,8 @@ observeEvent(input$timeseriesact1, {
       
       interval <- unique.spec*as.numeric(input$intervalmm)
       
-      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], xrf.k$cluster)
-      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster")
+      spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+      colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
       
       
       trendy <-  as.vector((if(input$elementnorm=="None") {
@@ -881,39 +1343,89 @@ observeEvent(input$timeseriesact1, {
       
       
       
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
       black.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(colour = "black", lwd=input$linesize) +
-      theme_light()
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       smooth.time.series <- qplot(spectra.timeseries.table$Interval, SMA(spectra.timeseries.table$Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="point") +
       theme_light() +
-      stat_smooth()
+      stat_smooth() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       ramp.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
       geom_line(aes(colour = Selected), lwd=input$linesize) +
       theme_light() +
-      scale_colour_gradientn(colours=rainbow(7))
+      scale_colour_gradientn(colours=rainbow(7)) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       area.time.series <- ggplot(spectra.timeseries.table, aes(Interval)) +
       theme_classic() +
       geom_area(aes(y=Selected, colour="grey60", fill="grey60"), alpha=0.6) +
       scale_x_continuous("Length (mm)") +
-      scale_y_continuous(trendy)
+      scale_y_continuous(trendy) +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       cluster.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
-      geom_line(aes(colour = as.factor(Cluster)), lwd=input$linesize) +
-      theme_light()
+      geom_point(aes(colour = as.factor(Cluster)), size=input$pointsize) +
+      scale_colour_discrete("Cluster") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      qualitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = as.factor(Qualitative)), lwd=input$pointsize) +
+      scale_colour_discrete("Qualitative") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      quantitative.time.series <- qplot(Interval, SMA(Selected, input$smoothing), xlab = "Length (mm)", ylab = trendy, geom="line", data = spectra.timeseries.table) +
+      geom_point(aes(colour = Quantitative), lwd=input$pointsize) +
+      scale_colour_gradientn("Quantitative", colours=rainbow(length(spectra.line.table$Quantitative))) +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       
       if (input$timecolour == "Black") {
@@ -924,11 +1436,14 @@ observeEvent(input$timeseriesact1, {
           ramp.time.series
       } else if (input$timecolour == "Cluster") {
           cluster.time.series
+      } else if (input$timecolour == "Qualitative") {
+          qualitative.time.series
+      } else if (input$timecolour == "Quantitative") {
+          quantitative.time.series
       } else if (input$timecolour == "Area") {
           area.time.series
       }
-      
-      
+
       
       
   })
@@ -958,8 +1473,24 @@ observeEvent(input$timeseriesact1, {
   
   plotInput4 <- reactive({
       
-
+     
      xrf.k <- xrfKReactive()
+     
+     quality.table <- renderHotable()
+     
+     colour.table <- data.frame(xrf.k$Cluster, quality.table)
+     colnames(colour.table) <- c("Cluster", names(quality.table))
+     
+     
+     
+     
+     unique.spec <- seq(1, length(colour.table$Spectrum), 1)
+     null <- rep(1, length(unique.spec))
+     
+     spectra.line.table$Cluster <- xrf.k$Cluster
+     spectra.line.table$Qualitative <- quality.table$Qualitative
+     spectra.line.table$Quantitative <- quality.table$Quantitative
+
 
       first.ratio <-spectra.line.table[input$elementratioa]
       second.ratio <- spectra.line.table[input$elementratiob]
@@ -967,8 +1498,8 @@ observeEvent(input$timeseriesact1, {
       fourth.ratio <- spectra.line.table[input$elementratiod]
       
       
-      ratio.frame <- data.frame(first.ratio, second.ratio, third.ratio, fourth.ratio, xrf.k$cluster)
-      colnames(ratio.frame) <- gsub("[.]", "", c(substr(input$elementratioa, 1, 2), substr(input$elementratiob, 1, 2), substr(input$elementratioc, 1, 2), substr(input$elementratiod, 1, 2), "Cluster"))
+      ratio.frame <- data.frame(first.ratio, second.ratio, third.ratio, fourth.ratio, spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+      colnames(ratio.frame) <- gsub("[.]", "", c(substr(input$elementratioa, 1, 2), substr(input$elementratiob, 1, 2), substr(input$elementratioc, 1, 2), substr(input$elementratiod, 1, 2), "Cluster", "Qualitative", "Quantitative"))
       
       ratio.names.x <- c(names(ratio.frame[1]), "/", names(ratio.frame[2]))
       ratio.names.y <- c(names(ratio.frame[3]), "/", names(ratio.frame[4]))
@@ -981,19 +1512,85 @@ observeEvent(input$timeseriesact1, {
       
       black.ratio.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
       geom_point(lwd=input$spotsize2) +
-      theme_light()
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       cluster.ratio.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
-      geom_point(aes(colour=as.factor(ratio.frame$Cluster)), lwd=input$spotsize2) +
+      geom_point(aes(colour=as.factor(ratio.frame$Cluster), shape=as.factor(ratio.frame$Cluster)), size=input$spotsize2+1) +
+      geom_point(colour="grey30", size=input$spotsize2-2) +
+      scale_shape_manual("Cluster", values=1:nlevels(as.factor(as.factor(ratio.frame$Cluster)))) +
+      scale_colour_discrete("Cluster") +
       theme_light() +
-      theme(legend.position="none")
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
       
       cluster.ratio.ellipse.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
       stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=as.factor(ratio.frame$Cluster), linetype=as.factor(ratio.frame$Cluster))) +
-      geom_point(aes(colour=as.factor(ratio.frame$Cluster)), lwd=input$spotsize2) +
+      geom_point(aes(colour=as.factor(ratio.frame$Cluster), shape=as.factor(ratio.frame$Cluster)), size=input$spotsize2+1) +
+      geom_point(colour="grey30", size=input$spotsize2-2) +
+      scale_shape_manual("Cluster", values=1:nlevels(as.factor(as.factor(ratio.frame$Cluster)))) +
+      scale_colour_discrete("Cluster") +
       theme_light() +
-      theme(legend.position="none")+
-      guides(linetype=FALSE)
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      qualitative.ratio.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
+      geom_point(aes(colour=as.factor(ratio.frame$Qualitative), shape=as.factor(ratio.frame$Qualitative)), size=input$spotsize2+1) +
+      geom_point(colour="grey30", size=input$spotsize2-2) +
+      scale_shape_manual("Qualitative", values=1:nlevels(ratio.frame$Qualitative)) +
+      scale_colour_discrete("Qualitative") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      qualitative.ratio.ellipse.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
+      stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=as.factor(ratio.frame$Qualitative), linetype=as.factor(ratio.frame$Cluster))) +
+      geom_point(aes(colour=as.factor(ratio.frame$Qualitative), shape=as.factor(ratio.frame$Qualitative)), size=input$spotsize2+1) +
+      geom_point(colour="grey30", size=input$spotsize2-2) +
+      scale_shape_manual("Qualitative", values=1:nlevels(ratio.frame$Qualitative)) +
+      scale_colour_discrete("Qualitative") +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
+      quanitative.ratio.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
+      geom_point(aes(colour=ratio.frame$Quantitative), size=input$spotsize2) +
+      scale_colour_gradientn("Quantitative", colours=rainbow(length(ratio.frame$Quantitative))) +
+      theme_light() +
+      theme(axis.text.x = element_text(size=15)) +
+      theme(axis.text.y = element_text(size=15)) +
+      theme(axis.title.x = element_text(size=15)) +
+      theme(axis.title.y = element_text(size=15, angle=90)) +
+      theme(plot.title=element_text(size=20)) +
+      theme(legend.title=element_text(size=15)) +
+      theme(legend.text=element_text(size=15))
+      
       
       
 
@@ -1006,6 +1603,14 @@ observeEvent(input$timeseriesact1, {
           cluster.ratio.plot
       } else if (input$ratiocolour == "Cluster" && input$elipseplot2==TRUE) {
           cluster.ratio.ellipse.plot
+      } else if (input$ratiocolour == "Qualitative" && input$elipseplot2==FALSE) {
+          qualitative.ratio.plot
+      } else if (input$ratiocolour == "Qualitative" && input$elipseplot2==TRUE) {
+          qualitative.ratio.ellipse.plot
+      } else if (input$ratiocolour == "Quantitative" && input$elipseplot2==FALSE) {
+          quanitative.ratio.plot
+      } else if (input$ratiocolour == "Quantitative" && input$elipseplot2==TRUE) {
+          quanitative.ratio.plot
       }
   })
 
@@ -1030,46 +1635,156 @@ observeEvent(input$timeseriesact1, {
 
 plotInput5 <- reactive({
     
+    
     xrf.k <- xrfKReactive()
+    
+    quality.table <- renderHotable()
+    
+    colour.table <- data.frame(xrf.k$Cluster, quality.table)
+    colnames(colour.table) <- c("Cluster", names(quality.table))
+    
+    
+    
+    
+    unique.spec <- seq(1, length(colour.table$Spectrum), 1)
+    null <- rep(1, length(unique.spec))
+    
+    spectra.line.table$Cluster <- xrf.k$Cluster
+    spectra.line.table$Qualitative <- quality.table$Qualitative
+    spectra.line.table$Quantitative <- quality.table$Quantitative
+
     
     first.axis <- spectra.line.table[input$axisa]
     second.axis <- spectra.line.table[input$axisb]
     third.axis <- spectra.line.table[input$axisc]
     
-    axis.frame <- data.frame(first.axis, second.axis, third.axis, xrf.k$cluster)
-    colnames(axis.frame) <- gsub("[.]", "", c(substr(input$axisa, 1, 2), substr(input$axisb, 1, 2), substr(input$axisc, 1, 2), "Cluster"))
+    axis.frame <- data.frame(first.axis, second.axis, third.axis, spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+    colnames(axis.frame) <- gsub("[.]", "", c(substr(input$axisa, 1, 2), substr(input$axisb, 1, 2), substr(input$axisc, 1, 2), "Cluster", "Qualitative", "Quantitative"))
     
     ternaryplot1 <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
     geom_point(size=input$ternpointsize) +
-    theme_light()
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
     
     ternaryplot2 <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
     geom_density_tern() +
     geom_point(size=input$ternpointsize) +
-    theme_light()
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
     
     ternaryplotcluster <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
-    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster)), size=input$ternpointsize) +
-    scale_shape_discrete("Cluster") +
+    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster)), size=input$ternpointsize+1) +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Cluster", values=1:nlevels(as.factor(axis.frame$Cluster))) +
     scale_colour_discrete("Cluster") +
-    theme(legend.position="none") +
-    theme_light()
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
     
     ternaryplotclusterellipse <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
     geom_density_tern() +
     geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster)), size=input$ternpointsize) +
-    scale_shape_discrete("Cluster") +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Cluster", values=1:nlevels(as.factor(axis.frame$Cluster))) +
     scale_colour_discrete("Cluster") +
-    theme_light()
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotqualitative <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
+    geom_point(aes(colour = as.factor(Qualitative), shape=as.factor(Qualitative)), size=input$ternpointsize+1) +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Qualitative", values=1:nlevels(axis.frame$Qualitative)) +
+    scale_colour_discrete("Qualitative") +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotqualitativeellipse <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
+    geom_density_tern() +
+    geom_point(aes(colour = as.factor(Qualitative), shape=as.factor(Qualitative)), size=input$ternpointsize+1) +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Qualitative", values=1:nlevels(axis.frame$Qualitative)) +
+    scale_colour_discrete("Qualitative") +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotquantitative <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
+    geom_point(aes(colour = Quantitative), size=input$ternpointsize+1) +
+    geom_point(size=input$ternpointsize-2) +
+    scale_colour_gradientn("Quantitative", colours=rainbow(length(axis.frame$Quantitative))) +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotquanitativeellipse <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
+    geom_density_tern() +
+    geom_point(aes(colour = Quantitative), size=input$ternpointsize) +
+    scale_colour_gradientn("Quantitative", colours=rainbow(length(axis.frame$Quantitative))) +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
 
-    if (input$ternarycolour == "Black" && input$terndensityplot==FALSE) {
+
+    if (input$ternarycolour == "black" && input$terndensityplot==FALSE) {
         ternaryplot1
-    } else if (input$ternarycolour == "Black" && input$terndensityplot==TRUE) {
+    } else if (input$ternarycolour == "black" && input$terndensityplot==TRUE) {
         ternaryplot2
     } else if (input$ternarycolour == "Cluster" && input$terndensityplot==FALSE) {
         ternaryplotcluster
     } else if (input$ternarycolour == "Cluster" && input$terndensityplot==TRUE) {
         ternaryplotclusterellipse
+    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==FALSE) {
+        ternaryplotqualitative
+    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==TRUE) {
+                ternaryplotqualitativeellipse
+    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==FALSE) {
+        ternaryplotquantitative
+    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==TRUE) {
+            ternaryplotquanitativeellipse
     }
 
 

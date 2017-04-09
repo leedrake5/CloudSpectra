@@ -3,6 +3,7 @@ library(dplyr)
 library(shinyIncubator)
 library(shinythemes)
 library(shiny)
+library(shinysky)
 
 
 
@@ -116,7 +117,7 @@ c("(Ne) Neon" = "Ne.table",
 selected="Fe.table"),
 
 
-checkboxInput('backgroundsubtract', "Background Subtract"),
+#checkboxInput('backgroundsubtract', "Background Subtract"),
 
 
 
@@ -135,7 +136,7 @@ dblclick = "plot1_dblclick",
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
-))))),
+)))))
 ))
 ),
 
@@ -149,7 +150,7 @@ sidebarPanel(
 
 
 
-
+actionButton('hotableprocess', "Enter Values"),
 downloadButton('downloadData', "Table"),
 
 tags$hr(),
@@ -166,9 +167,9 @@ names(spectra.line.table), selected = standard)
 mainPanel(
 tabsetPanel(
 id = 'dataset',
-tabPanel('Spectral Lines', dataTableOutput('mytable1')))
-
-)
+tabPanel('Spectral Lines', dataTableOutput('mytable1')),
+tabPanel('Add Categories', hotable('hotable1'))
+))
 )
 
 )
@@ -176,6 +177,7 @@ tabPanel('Spectral Lines', dataTableOutput('mytable1')))
 
 
 )),
+
 
 tabPanel("PCA",
 div(class="outer",
@@ -187,7 +189,14 @@ sidebarLayout(
 sidebarPanel(
 numericInput("knum", label = "K-Means", value=3),
 
-sliderInput("spotsize", label = "Point Size", value=3, min=1, max=15),
+selectInput("pcacolour", "Colour", choices=c(
+"Black"="black",
+"Cluster"="Cluster",
+"Qualitative"="Qualitative",
+"Quantitative"="Quantitative"),
+selected="Cluster"),
+
+sliderInput("spotsize", label = "Point Size", value=5, min=2, max=15),
 
 checkboxInput('elipseplot1', "Elipse"),
 
@@ -195,7 +204,7 @@ tags$hr(),
 
 
 downloadButton('downloadPlot2', "Plot"),
-downloadButton('downloadPcaTable', "Results")
+downloadButton('xrfpcatablefull', "Results")
 
 ),
 
@@ -256,6 +265,8 @@ c(
 "Smooth" = "Smooth",
 "Ramp" = "Selected",
 "Cluster" = "Cluster",
+"Qualitative" = "Qualitative",
+"Quantitative" = "Quantitative",
 "Area" = "Area")
 ),
 
@@ -266,7 +277,8 @@ tags$hr(),
 
 sliderInput("smoothing", label = "Smoothed Mean Average", value=1, min=1, max=50),
 
-sliderInput("linesize", label = "Line Size", value=1, min=1, max=15)
+sliderInput("linesize", label = "Line Size", value=1, min=1, max=15),
+sliderInput("pointsize", label = "Point Size", value=5, min=1, max=15)
 
 
 ),
@@ -327,12 +339,13 @@ sidebarLayout(
 sidebarPanel(
 
 
-selectInput(
-"ternarycolour", "Ternary Plot Type",
-c(
-"Black" = "Black",
-"Cluster" = "Cluster"
-)),
+selectInput("ternarycolour", "Colour", choices=c(
+"Black"="black",
+"Cluster"="Cluster",
+"Qualitative" = "Qualitative",
+"Quantitative" = "Quantitative"),
+selected="Cluster"),
+
 
 tags$hr(),
 
@@ -344,7 +357,7 @@ checkboxInput('terndensityplot', "Density Contour"),
 
 tags$hr(),
 
-sliderInput("ternpointsize", label = "Point Size", value=1, min=1, max=15),
+sliderInput("ternpointsize", label = "Point Size", value=5, min=2, max=15),
 
 tags$hr(),
 
@@ -378,8 +391,10 @@ selectInput(
 "ratiocolour", "Ratio Plot Type",
 c(
 "Black" = "Black",
-"Cluster" = "Cluster"
-)),
+"Cluster" = "Cluster",
+"Qualitative" = "Qualitative",
+"Quantitative" = "Quantitative"
+), selected="Cluster"),
 
 tags$hr(),
 
@@ -392,9 +407,11 @@ selectInput("elementratiod", "Element D", names(spectra.line.table), selected="K
 
 tags$hr(),
 
+sliderInput("spotsize2", label = "Point Size", value=5, min=2, max=15),
+
+
 checkboxInput('elipseplot2', "Elipse"),
 
-sliderInput("spotsize2", label = "Point Size", value=3, min=1, max=15),
 
 tags$hr(),
 
