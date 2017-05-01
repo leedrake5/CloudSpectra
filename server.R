@@ -1658,8 +1658,15 @@ plotInput5 <- reactive({
     second.axis <- spectra.line.table[input$axisb]
     third.axis <- spectra.line.table[input$axisc]
     
+    first.axis.norm <- first.axis/sum(first.axis)
+    second.axis.norm <- second.axis/sum(second.axis)
+    third.axis.norm <- third.axis/sum(third.axis)
+    
     axis.frame <- data.frame(first.axis, second.axis, third.axis, spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
     colnames(axis.frame) <- gsub("[.]", "", c(substr(input$axisa, 1, 2), substr(input$axisb, 1, 2), substr(input$axisc, 1, 2), "Cluster", "Qualitative", "Quantitative"))
+    
+    axis.frame.norm <- data.frame(first.axis.norm, second.axis.norm, third.axis.norm, spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
+    colnames(axis.frame.norm) <- gsub("[.]", "", c(substr(input$axisa, 1, 2), substr(input$axisb, 1, 2), substr(input$axisc, 1, 2), "Cluster", "Qualitative", "Quantitative"))
     
     ternaryplot1 <- ggtern(data=axis.frame, aes_string(x = colnames(axis.frame)[1], y = colnames(axis.frame)[2], z = colnames(axis.frame)[3])) +
     geom_point(size=input$ternpointsize) +
@@ -1767,24 +1774,151 @@ plotInput5 <- reactive({
     theme(plot.title=element_text(size=20)) +
     theme(legend.title=element_text(size=15)) +
     theme(legend.text=element_text(size=15))
+    
+    
+    
+    #####Normalization
+    
+    ternaryplot1.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_point(size=input$ternpointsize) +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplot2.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_density_tern() +
+    geom_point(size=input$ternpointsize) +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotcluster.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster)), size=input$ternpointsize+1) +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Cluster", values=1:nlevels(as.factor(axis.frame$Cluster))) +
+    scale_colour_discrete("Cluster") +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotclusterellipse.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_density_tern() +
+    geom_point(aes(colour = as.factor(Cluster), shape=as.factor(Cluster)), size=input$ternpointsize) +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Cluster", values=1:nlevels(as.factor(axis.frame$Cluster))) +
+    scale_colour_discrete("Cluster") +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotqualitative.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_point(aes(colour = as.factor(Qualitative), shape=as.factor(Qualitative)), size=input$ternpointsize+1) +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Qualitative", values=1:nlevels(axis.frame$Qualitative)) +
+    scale_colour_discrete("Qualitative") +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotqualitativeellipse.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_density_tern() +
+    geom_point(aes(colour = as.factor(Qualitative), shape=as.factor(Qualitative)), size=input$ternpointsize+1) +
+    geom_point(colour="grey30", size=input$ternpointsize-2) +
+    scale_shape_manual("Qualitative", values=1:nlevels(axis.frame$Qualitative)) +
+    scale_colour_discrete("Qualitative") +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotquantitative.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_point(aes(colour = Quantitative), size=input$ternpointsize+1) +
+    geom_point(size=input$ternpointsize-2) +
+    scale_colour_gradientn("Quantitative", colours=rainbow(length(axis.frame$Quantitative))) +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
+    
+    ternaryplotquanitativeellipse.norm <- ggtern(data=axis.frame.norm, aes_string(x = colnames(axis.frame.norm)[1], y = colnames(axis.frame.norm)[2], z = colnames(axis.frame.norm)[3])) +
+    geom_density_tern() +
+    geom_point(aes(colour = Quantitative), size=input$ternpointsize) +
+    scale_colour_gradientn("Quantitative", colours=rainbow(length(axis.frame$Quantitative))) +
+    theme_light() +
+    theme(axis.text.x = element_text(size=15)) +
+    theme(axis.text.y = element_text(size=15)) +
+    theme(axis.title.x = element_text(size=15)) +
+    theme(axis.title.y = element_text(size=15, angle=90)) +
+    theme(plot.title=element_text(size=20)) +
+    theme(legend.title=element_text(size=15)) +
+    theme(legend.text=element_text(size=15))
 
 
-    if (input$ternarycolour == "black" && input$terndensityplot==FALSE) {
+    if (input$ternarycolour == "black" && input$terndensityplot==FALSE && input$ternnormplot==FALSE) {
         ternaryplot1
-    } else if (input$ternarycolour == "black" && input$terndensityplot==TRUE) {
+    } else if (input$ternarycolour == "black" && input$terndensityplot==TRUE && input$ternnormplot==FALSE) {
         ternaryplot2
-    } else if (input$ternarycolour == "Cluster" && input$terndensityplot==FALSE) {
+    } else if (input$ternarycolour == "Cluster" && input$terndensityplot==FALSE && input$ternnormplot==FALSE) {
         ternaryplotcluster
-    } else if (input$ternarycolour == "Cluster" && input$terndensityplot==TRUE) {
+    } else if (input$ternarycolour == "Cluster" && input$terndensityplot==TRUE && input$ternnormplot==FALSE) {
         ternaryplotclusterellipse
-    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==FALSE) {
+    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==FALSE && input$ternnormplot==FALSE) {
         ternaryplotqualitative
-    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==TRUE) {
+    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==TRUE && input$ternnormplot==FALSE) {
                 ternaryplotqualitativeellipse
-    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==FALSE) {
+    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==FALSE && input$ternnormplot==FALSE) {
         ternaryplotquantitative
-    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==TRUE) {
+    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==TRUE && input$ternnormplot==FALSE) {
             ternaryplotquanitativeellipse
+    } else if (input$ternarycolour == "black" && input$terndensityplot==FALSE && input$ternnormplot==TRUE) {
+        ternaryplot1.norm
+    } else if (input$ternarycolour == "black" && input$terndensityplot==TRUE && input$ternnormplot==TRUE) {
+        ternaryplot2.norm
+    } else if (input$ternarycolour == "Cluster" && input$terndensityplot==FALSE && input$ternnormplot==TRUE) {
+        ternaryplotcluster.norm
+    } else if (input$ternarycolour == "Cluster" && input$terndensityplot==TRUE && input$ternnormplot==TRUE) {
+        ternaryplotclusterellipse.norm
+    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==FALSE && input$ternnormplot==TRUE) {
+        ternaryplotqualitative.norm
+    } else if (input$ternarycolour == "Qualitative" && input$terndensityplot==TRUE && input$ternnormplot==TRUE) {
+        ternaryplotqualitativeellipse.norm
+    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==FALSE && input$ternnormplot==TRUE) {
+        ternaryplotquantitative.norm
+    } else if (input$ternarycolour == "Quantitative" && input$terndensityplot==TRUE && input$ternnormplot==TRUE) {
+        ternaryplotquanitativeellipse.norm
     }
 
 

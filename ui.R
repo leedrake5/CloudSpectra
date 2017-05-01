@@ -354,6 +354,8 @@ selectInput("axisa", "Axis A", names(spectra.line.table), selected="Al.K.alpha")
 selectInput("axisb", "Axis B", names(spectra.line.table), selected="Si.K.alpha"),
 selectInput("axisc", "Axis C", names(spectra.line.table), selected="Ca.K.alpha"),
 checkboxInput('terndensityplot', "Density Contour"),
+checkboxInput('ternnormplot', "Normalize"),
+
 
 tags$hr(),
 
