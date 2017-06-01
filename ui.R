@@ -4,6 +4,7 @@ library(shinyIncubator)
 library(shinythemes)
 library(shiny)
 library(shinysky)
+library(rhandsontable)
 
 
 
@@ -168,7 +169,7 @@ mainPanel(
 tabsetPanel(
 id = 'dataset',
 tabPanel('Spectral Lines', dataTableOutput('mytable1')),
-tabPanel('Add Categories', hotable('hotable1'))
+tabPanel('Add Categories', rHandsontableOutput('hot'))
 ))
 )
 
