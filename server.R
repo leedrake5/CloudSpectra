@@ -315,10 +315,15 @@ print(plotInput())
       empty.line.table <- empty.line.table[1:2]
       colnames(empty.line.table) <- c("Qualitative", "Quantitative")
       empty.line.table$Spectrum <- spectra.line.table$Spectrum
-      string <- randomStrings(n=length(spectra.line.table$Spectrum), len=5, digits=FALSE, upperalpha=TRUE, loweralpha=TRUE, unique=TRUE, check=TRUE)
+      na.vector <- rep("NA", length(empty.line.table$Qualitative))
+      na.matrix <- as.matrix(na.vector)
+      na.matrix[1,1] <- "a"
+      na.matrix[2,1] <- "b"
+      na.matrix[3,1] <- "c"
+      na.input <- as.vector(na.matrix[,1])
+
       
-      
-      empty.line.table <- data.frame(empty.line.table$Spectrum, string, empty.line.table$Quantitative)
+      empty.line.table <- data.frame(empty.line.table$Spectrum, na.input, empty.line.table$Quantitative)
       colnames(empty.line.table) <- c("Spectrum", "Qualitative", "Quantitative")
 
 
