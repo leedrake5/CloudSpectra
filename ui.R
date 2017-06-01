@@ -415,6 +415,7 @@ sliderInput("spotsize2", label = "Point Size", value=5, min=2, max=15),
 checkboxInput('elipseplot2', "Elipse"),
 
 
+
 tags$hr(),
 
 

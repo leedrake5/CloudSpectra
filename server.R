@@ -8,6 +8,7 @@ library(ggtern)
 library(ggplot2)
 library(shiny)
 library(shinysky)
+library(random)
 
 
 
@@ -314,9 +315,10 @@ print(plotInput())
       empty.line.table <- empty.line.table[1:2]
       colnames(empty.line.table) <- c("Qualitative", "Quantitative")
       empty.line.table$Spectrum <- spectra.line.table$Spectrum
-      na.vector <- rep("NA", length(empty.line.table$Qualitative))
+      string <- randomStrings(n=length(spectra.line.table$Spectrum), len=5, digits=TRUE, upperalpha=TRUE, loweralpha=TRUE, unique=TRUE, check=TRUE)
       
-      empty.line.table <- data.frame(empty.line.table$Spectrum, na.vector, empty.line.table$Quantitative)
+      
+      empty.line.table <- data.frame(empty.line.table$Spectrum, string, empty.line.table$Quantitative)
       colnames(empty.line.table) <- c("Spectrum", "Qualitative", "Quantitative")
 
 
@@ -1497,10 +1499,16 @@ observeEvent(input$timeseriesact1, {
       third.ratio <- spectra.line.table[input$elementratioc]
       fourth.ratio <- spectra.line.table[input$elementratiod]
       
+      first.ratio.norm <- first.ratio/sum(first.ratio)
+      second.ratio.norm <- second.ratio/sum(second.ratio)
+      third.ratio.norm <- third.ratio/sum(third.ratio)
+      fourth.ratio.norm <- fourth.ratio/sum(fourth.ratio)
+      
       
       ratio.frame <- data.frame(first.ratio, second.ratio, third.ratio, fourth.ratio, spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
       colnames(ratio.frame) <- gsub("[.]", "", c(substr(input$elementratioa, 1, 2), substr(input$elementratiob, 1, 2), substr(input$elementratioc, 1, 2), substr(input$elementratiod, 1, 2), "Cluster", "Qualitative", "Quantitative"))
       
+            
       ratio.names.x <- c(names(ratio.frame[1]), "/", names(ratio.frame[2]))
       ratio.names.y <- c(names(ratio.frame[3]), "/", names(ratio.frame[4]))
       
@@ -1536,7 +1544,7 @@ observeEvent(input$timeseriesact1, {
       theme(legend.text=element_text(size=15))
       
       cluster.ratio.ellipse.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
-      stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=as.factor(ratio.frame$Cluster), linetype=as.factor(ratio.frame$Cluster))) +
+      stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=as.factor(ratio.frame$Cluster))) +
       geom_point(aes(colour=as.factor(ratio.frame$Cluster), shape=as.factor(ratio.frame$Cluster)), size=input$spotsize2+1) +
       geom_point(colour="grey30", size=input$spotsize2-2) +
       scale_shape_manual("Cluster", values=1:nlevels(as.factor(as.factor(ratio.frame$Cluster)))) +
@@ -1565,7 +1573,7 @@ observeEvent(input$timeseriesact1, {
       theme(legend.text=element_text(size=15))
       
       qualitative.ratio.ellipse.plot <- qplot(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], xlab = ratio.names.x, ylab = ratio.names.y ) +
-      stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=as.factor(ratio.frame$Qualitative), linetype=as.factor(ratio.frame$Cluster))) +
+      stat_ellipse(aes(ratio.frame[,1]/ratio.frame[,2], ratio.frame[,3]/ratio.frame[,4], colour=as.factor(ratio.frame$Qualitative))) +
       geom_point(aes(colour=as.factor(ratio.frame$Qualitative), shape=as.factor(ratio.frame$Qualitative)), size=input$spotsize2+1) +
       geom_point(colour="grey30", size=input$spotsize2-2) +
       scale_shape_manual("Qualitative", values=1:nlevels(ratio.frame$Qualitative)) +
@@ -1593,11 +1601,15 @@ observeEvent(input$timeseriesact1, {
       
       
       
+      
+      
+      
+      
 
 
       
       
-      if (input$ratiocolour == "Black") {
+      if (input$ratiocolour == "Black" && input$elipseplotnorm==FALSE) {
           black.ratio.plot
       } else if (input$ratiocolour == "Cluster" && input$elipseplot2==FALSE) {
           cluster.ratio.plot
@@ -1605,13 +1617,14 @@ observeEvent(input$timeseriesact1, {
           cluster.ratio.ellipse.plot
       } else if (input$ratiocolour == "Qualitative" && input$elipseplot2==FALSE) {
           qualitative.ratio.plot
-      } else if (input$ratiocolour == "Qualitative" && input$elipseplot2==TRUE) {
+      } else if (input$ratiocolour == "Qualitative" && input$elipseplot2==TRUE ) {
           qualitative.ratio.ellipse.plot
-      } else if (input$ratiocolour == "Quantitative" && input$elipseplot2==FALSE) {
+      } else if (input$ratiocolour == "Quantitative" && input$elipseplot2==FALSE ) {
           quanitative.ratio.plot
       } else if (input$ratiocolour == "Quantitative" && input$elipseplot2==TRUE) {
           quanitative.ratio.plot
       }
+
   })
 
 
