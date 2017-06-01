@@ -320,7 +320,7 @@ print(plotInput())
       na.matrix[1,1] <- "a"
       na.matrix[2,1] <- "b"
       na.matrix[3,1] <- "c"
-      na.input <- as.vector(na.matrix[,1])
+      na.input <- as.vector(as.factor(na.matrix[,1]))
 
       
       empty.line.table <- data.frame(empty.line.table$Spectrum, na.input, empty.line.table$Quantitative)
