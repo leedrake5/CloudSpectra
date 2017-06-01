@@ -315,7 +315,7 @@ print(plotInput())
       empty.line.table <- empty.line.table[1:2]
       colnames(empty.line.table) <- c("Qualitative", "Quantitative")
       empty.line.table$Spectrum <- spectra.line.table$Spectrum
-      string <- randomStrings(n=length(spectra.line.table$Spectrum), len=5, digits=TRUE, upperalpha=TRUE, loweralpha=TRUE, unique=TRUE, check=TRUE)
+      string <- randomStrings(n=length(spectra.line.table$Spectrum), len=5, digits=FALSE, upperalpha=TRUE, loweralpha=TRUE, unique=TRUE, check=TRUE)
       
       
       empty.line.table <- data.frame(empty.line.table$Spectrum, string, empty.line.table$Quantitative)
