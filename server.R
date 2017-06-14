@@ -271,9 +271,13 @@ print(plotInput())
         })
         
         output$downloadPlot <- downloadHandler(
-        filename = function() { paste(input$dataset, '.png', sep='') },
+        
+        plotname <- "SpectraPlot",
+        
+    
+        filename = function() { paste(paste(c(input$projectname, "-", plotname), collapse=''), '.tiff', sep='') },
         content = function(file) {
-            ggsave(file,plotInput(), width=10, height=7)
+            ggsave(file,plotInput(), device="tiff", dpi=300, width=10, height=7)
         }
         )
         
@@ -362,7 +366,7 @@ print(plotInput())
 
   
   output$downloadData <- downloadHandler(
-  filename = function() { paste(input$dataset, '.csv', sep=',') },
+  filename = function() { paste(paste(c(input$projectname, "_", "CountTable"), collapse=''), '.csv', sep=',') },
   content = function(file
   ) {
       write.csv(tableInput(), file)
@@ -565,9 +569,9 @@ print(plotInput())
   
   
   output$downloadPlot2 <- downloadHandler(
-  filename = function() { paste(input$dataset, '.png', sep='') },
+  filename = function() { paste(paste(c(input$projectname, "_", "PCAPlot"), collapse=''), '.tiff',  sep='') },
   content = function(file) {
-      ggsave(file,plotInput2(), width=10, height=7)
+      ggsave(file,plotInput2(), device="tiff", dpi=300, width=10, height=7)
   }
   )
   
@@ -610,7 +614,7 @@ output$xrfpcatablefull <- DT::renderDataTable({
 
 
 output$downloadPcaTable <- downloadHandler(
-filename = function() { paste(input$dataset, '.csv', sep=',') },
+filename = function() { paste(paste(c(input$projectname, "_", "PCATable"), collapse=''), '.csv', sep=',') },
 content = function(file
 ) {
     write.csv(pcaTableInput(), file)
@@ -809,12 +813,25 @@ observeEvent(input$timeseriesact1, {
       isolate(print(plotInput3a()))
       
   })
+  
+  trendPlot <- reactive({
+      trendy <-  as.vector((if(input$elementnorm=="None") {
+          paste(gsub("[.]", "", c(substr(input$elementtrend, 1, 2), " CPS")), sep=",", collapse="")
+      } else {
+          paste(gsub("[.]", "", c(substr(input$elementtrend, 1, 2), "/", substr(input$elementnorm, 1, 2))), sep=",", collapse="")
+      }))
+      
+      trendy.label <- paste(c(input$projectname, "_", trendy), collapse='')
+      trendy.label
+  })
 
 
   output$downloadPlot3a <- downloadHandler(
-  filename = function() { paste(input$dataset, '.png', sep='') },
+  
+  
+  filename = function() { paste(trendPlot(), '.tiff', sep='') },
   content = function(file) {
-      ggsave(file,plotInput3a(), width=10, height=7)
+      ggsave(file,plotInput3a(), device="tiff", dpi=300, width=10, height=7)
   }
   )
   
@@ -986,9 +1003,12 @@ observeEvent(input$timeseriesact1, {
   
   
   output$downloadPlot3b <- downloadHandler(
-  filename = function() { paste(input$dataset, '.png', sep='') },
+  
+  
+
+  filename = function() { paste(trendPlot(), '.tiff', sep='') },
   content = function(file) {
-      ggsave(file,plotInput3b(), width=10, height=7)
+      ggsave(file,plotInput3b(), device="tiff", dpi=300, width=10, height=7)
   }
   )
   
@@ -1150,9 +1170,11 @@ observeEvent(input$timeseriesact1, {
   })
   
   output$downloadPlot3c <- downloadHandler(
-  filename = function() { paste(input$dataset, '.png', sep='') },
+
+  
+  filename = function() { paste(trendPlot(), '.tiff', sep='') },
   content = function(file) {
-      ggsave(file,plotInput3c(), width=10, height=7)
+      ggsave(file,plotInput3c(), device="tiff", dpi=300, width=10, height=7)
   }
   )
   
@@ -1312,9 +1334,12 @@ observeEvent(input$timeseriesact1, {
   })
   
   output$downloadPlot3d <- downloadHandler(
-  filename = function() { paste(input$dataset, '.png', sep='') },
+  
+  
+  
+  filename = function() { paste(trendPlot(), '.tiff', sep='') },
   content = function(file) {
-      ggsave(file,plotInput3d(), width=10, height=7)
+      ggsave(file,plotInput3d(), device="tiff", dpi=300, width=10, height=7)
   }
   )
   
@@ -1481,9 +1506,12 @@ observeEvent(input$timeseriesact1, {
   
   
   output$downloadPlot3e <- downloadHandler(
-  filename = function() { paste(input$dataset, '.png', sep='') },
+
+  
+  
+  filename = function() { paste(trendPlot(), '.tiff', sep='') },
   content = function(file) {
-      ggsave(file,plotInput3e(), width=10, height=7)
+      ggsave(file,plotInput3e(), device="tiff", dpi=300, width=10, height=7)
   }
   )
    
@@ -1649,10 +1677,19 @@ observeEvent(input$timeseriesact1, {
 
     })
    
+   ratioTerm <- reactive({
+       
+          ratio.names <- paste(c(c(substr(input$elementratioa, 1,2), "-", substr(input$elementratiob, 1, 2)), "_", c(substr(input$elementratioc,1,2), "-", substr(input$elementratiod,1,2), "_RatioPlot")), collapse="")
+          ratio.label <- paste(c(input$projectname, "_", ratio.names), collapse='')
+          ratio.label
+   })
+   
    output$downloadPlot4 <- downloadHandler(
-   filename = function() { paste(input$dataset, '.png', sep='') },
+
+   
+   filename = function() { paste(ratioTerm(), '.tiff', sep='') },
    content = function(file) {
-       ggsave(file,plotInput4(), width=10, height=7)
+       ggsave(file,plotInput4(), device="tiff", dpi=300, width=10, height=7)
    }
    )
 
@@ -1958,10 +1995,19 @@ output$ternaryplot <- renderPlot({
     
 })
 
+axisTerm <- reactive({
+    axis.names.tern <- paste(gsub("[.]", "-", c(substr(input$axisa, 1, 2), substr(input$axisb, 1, 2), substr(input$axisc, 1, 2), "Ternary")), collapse='')
+    axis.labels <- paste(c(input$projectname, "_", axis.names.tern), collapse='')
+    axis.labels
+})
+
 output$downloadPlot5 <- downloadHandler(
-filename = function() { paste(input$dataset, '.png', sep='') },
+
+
+
+filename = function() { paste(axisTerm(), '.tiff', sep='') },
 content = function(file) {
-    ggsave(file,plotInput5(), width=10, height=7)
+    ggsave(file,plotInput5(), device="tiff", dpi=300, width=10, height=7)
 }
 )
 

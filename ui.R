@@ -31,6 +31,11 @@ accept=c('text/csv',
 
 tags$hr(),
 
+textInput('projectname', label="Project Name", value=""),
+
+tags$hr(),
+
+
 element <- selectInput(
 "element", "Element:",
 c("(Ne) Neon" = "Ne.table",
