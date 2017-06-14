@@ -321,7 +321,7 @@ print(plotInput())
       na.matrix[1,1] <- "a"
       na.matrix[2,1] <- "b"
       na.matrix[3,1] <- "c"
-      na.input <- as.vector(as.factor(na.matrix[,1]))
+      na.input <- as.vector(na.matrix[,1])
       
       
       empty.line.table <- data.frame(empty.line.table$Spectrum, na.input, empty.line.table$Quantitative)
@@ -352,7 +352,7 @@ print(plotInput())
   output$hot <- renderRHandsontable({
       DF <- values[["DF"]]
       if (!is.null(DF))
-      rhandsontable(DF, useTypes = TRUE, stretchH = "all")
+      rhandsontable(DF, useTypes = FALSE, stretchH = "all")
   })
 
 
@@ -669,7 +669,7 @@ plotInput3a <- reactive({
    colnames(spectra.line.table.norm) <- c(names(spectra.line.table), "None")
    spectra.line.table.norm
 
-   interval <- unique.spec*as.numeric(input$intervalmm)
+   interval <- unique.spec*as.numeric(input$intervalmm)+as.numeric(input$startmm)
 
    spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
    colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
@@ -845,7 +845,7 @@ observeEvent(input$timeseriesact1, {
       colnames(spectra.line.table.norm) <- c(names(spectra.line.table), "None")
       spectra.line.table.norm
       
-      interval <- unique.spec*as.numeric(input$intervalmm)
+      interval <- unique.spec*as.numeric(input$intervalmm)+as.numeric(input$startmm)
       
       spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
       colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
@@ -1019,7 +1019,7 @@ observeEvent(input$timeseriesact1, {
       colnames(spectra.line.table.norm) <- c(names(spectra.line.table), "None")
       spectra.line.table.norm
       
-      interval <- unique.spec*as.numeric(input$intervalmm)
+      interval <- unique.spec*as.numeric(input$intervalmm)+as.numeric(input$startmm)
       
       spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
       colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
@@ -1182,7 +1182,7 @@ observeEvent(input$timeseriesact1, {
       colnames(spectra.line.table.norm) <- c(names(spectra.line.table), "None")
       spectra.line.table.norm
       
-      interval <- unique.spec*as.numeric(input$intervalmm)
+      interval <- unique.spec*as.numeric(input$intervalmm)+as.numeric(input$startmm)
       
       spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
       colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")
@@ -1346,7 +1346,7 @@ observeEvent(input$timeseriesact1, {
       colnames(spectra.line.table.norm) <- c(names(spectra.line.table), "None")
       spectra.line.table.norm
       
-      interval <- unique.spec*as.numeric(input$intervalmm)
+      interval <- unique.spec*as.numeric(input$intervalmm)+as.numeric(input$startmm)
       
       spectra.timeseries.table <- data.frame(interval, spectra.line.table[c(input$elementtrend)]/spectra.line.table.norm[c(input$elementnorm)], spectra.line.table$Cluster, spectra.line.table$Qualitative, spectra.line.table$Quantitative)
       colnames(spectra.timeseries.table) <- c("Interval", "Selected", "Cluster", "Qualitative", "Quantitative")

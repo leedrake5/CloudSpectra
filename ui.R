@@ -271,6 +271,7 @@ c(
 "Area" = "Area")
 ),
 
+numericInput("startmm", label = "Start Point (mm)", value=0),
 numericInput("intervalmm", label = "Interval Between Spectra (mm)", value=3),
 
 tags$hr(),
