@@ -2,12 +2,10 @@ library(pbapply)
 library(reshape2)
 library(TTR)
 library(dplyr)
-library(shinyIncubator)
 library(data.table)
 library(ggtern)
 library(ggplot2)
 library(shiny)
-library(shinysky)
 library(random)
 library(rhandsontable)
 
@@ -312,6 +310,11 @@ print(plotInput())
    
   tableInput()
 
+  })
+  
+  fullTable <- reactive({
+      
+      
   })
   
   
