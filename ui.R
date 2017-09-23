@@ -6,7 +6,7 @@ library(rhandsontable)
 
 
 
-shinyUI(navbarPage("XRF", id="nav", theme = shinytheme("flatly"),
+shinyUI(navbarPage("XRF", id="nav", theme = shinytheme("paper"),
 tabPanel("Spectrum",
 div(class="outer",
 headerPanel("X-Ray Fluorescence Spectrum Viewer"),
@@ -26,6 +26,8 @@ fileInput('file1', 'Choose Spectra', multiple=TRUE,
 accept=c('text/csv',
 'text/comma-separated-values,text/plain',
 '.csv')),
+
+radioButtons("filetype", label=NULL, c("Spectra", "Net"), selected="Spectra"),
 
 tags$hr(),
 
@@ -125,7 +127,11 @@ selected="Fe.table"),
 
 
 
-tags$hr()
+tags$hr(),
+
+fileInput('calfileinput', 'Load Cal File', accept='.quant', multiple=FALSE),
+
+checkboxInput('usecalfile', "Use Cal File")
 
 
 ),
@@ -135,7 +141,7 @@ tags$hr()
 mainPanel(
 fluidRow(
 column(width = 11, class = "well",
-plotOutput("distPlot", height = 455,
+plotOutput("distPlot", height = 650,
 dblclick = "plot1_dblclick",
 brush = brushOpts(
 id = "plot1_brush",
@@ -161,8 +167,8 @@ tags$hr(),
 
 conditionalPanel(
 condition='input.dataset === spectra.line.table',
-checkboxGroupInput('show_vars', 'Elemental lines to show:',
-names(spectra.line.table), selected = standard)
+uiOutput('defaultlines')
+
 )),
 
 
@@ -218,7 +224,7 @@ mainPanel(
 tabsetPanel(
 id = 'dataset',
 tabPanel('Selected XRF Lines', plotOutput('xrfpcaplot',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
@@ -259,8 +265,8 @@ downloadButton('downloadPlot3e', "5"),
 
 tags$hr(),
 
-selectInput("elementtrend", "Element:", names(spectra.line.table), selected="Fe.K.alpha"),
-selectInput("elementnorm", "Ratio:", names(spectra.line.table.norm), selected="None"),
+uiOutput('inelementtrend'),
+uiOutput('inelementnorm'),
 
 selectInput(
 "timecolour", "Time Series Type",
@@ -292,35 +298,35 @@ mainPanel(
 tabsetPanel(
 id = 'dataset',
 tabPanel('Time Series 1', plotOutput('timeseriesplot1',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
 ))),
 
 tabPanel('Time Series 2', plotOutput('timeseriesplot2',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
 ))),
 
 tabPanel('Time Series 3', plotOutput('timeseriesplot3',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
 ))),
 
 tabPanel('Time Series 4', plotOutput('timeseriesplot4',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
 ))),
 
 tabPanel('Time Series 5', plotOutput('timeseriesplot5',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
@@ -355,9 +361,9 @@ selected="Cluster"),
 tags$hr(),
 
 
-selectInput("axisa", "Axis A", names(spectra.line.table), selected="Al.K.alpha"),
-selectInput("axisb", "Axis B", names(spectra.line.table), selected="Si.K.alpha"),
-selectInput("axisc", "Axis C", names(spectra.line.table), selected="Ca.K.alpha"),
+uiOutput('inaxisa'),
+uiOutput('inaxisb'),
+uiOutput('inaxisc'),
 checkboxInput('terndensityplot', "Density Contour"),
 checkboxInput('ternnormplot', "Normalize"),
 
@@ -374,7 +380,7 @@ downloadButton('downloadPlot5', "Plot")
 
 mainPanel(
 tabPanel('Ternary Plot', plotOutput('ternaryplot',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE
@@ -406,11 +412,12 @@ c(
 tags$hr(),
 
 
-selectInput("elementratioa", "Element A", names(spectra.line.table), selected="Fe.K.alpha"),
-selectInput("elementratiob", "Element B", names(spectra.line.table), selected="Ca.K.alpha"),
 
-selectInput("elementratioc", "Element C", names(spectra.line.table), selected="Ti.K.alpha"),
-selectInput("elementratiod", "Element D", names(spectra.line.table), selected="K.K.alpha"),
+uiOutput('inelementratioa'),
+uiOutput('inelementratiob'),
+
+uiOutput('inelementratioc'),
+uiOutput('inelementratiod'),
 
 tags$hr(),
 
@@ -432,7 +439,7 @@ downloadButton('downloadPlot4', "Plot")
 
 mainPanel(
 tabPanel('Element Ratios', plotOutput('elementratiotimeseries',
-dblclick = "plot1_dblclick", height = 500, width= 700,
+dblclick = "plot1_dblclick", height = 700, width= 1200,
 brush = brushOpts(
 id = "plot1_brush",
 resetOnNew = TRUE

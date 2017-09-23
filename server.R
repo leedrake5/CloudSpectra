@@ -18,15 +18,11 @@ library(rhandsontable)
 shinyServer(function(input, output, session) {
     
     
-    
- 
-    
-    observeEvent(input$actionprocess, {
-
-        myData <- reactive({
+    fullSpectra <- reactive({
+        
+        
+        withProgress(message = 'Processing Data', value = 0, {
             
-            withProgress(message = 'Processing Data', value = 0, {
-
             inFile <- input$file1
             if (is.null(inFile)) return(NULL)
             temp = inFile$name
@@ -34,30 +30,30 @@ shinyServer(function(input, output, session) {
             id.seq <- seq(1, 2048,1)
             
             n <- length(temp)*id.seq
-
-myfiles.x = pblapply(inFile$datapath, read_csv_filename_x)
-
-
-
- myfiles.y = pblapply(inFile$datapath, read_csv_filename_y)
-
             
-
-
+            myfiles.x = pblapply(inFile$datapath, read_csv_filename_x)
+            
+            
+            
+            myfiles.y = pblapply(inFile$datapath, read_csv_filename_y)
+            
+            
+            
+            
             xrf.x <- data.frame(id.seq, myfiles.x)
             colnames(xrf.x) <- c("ID", temp)
             xrf.y <- data.frame(id.seq, myfiles.y)
             colnames(xrf.y) <- c("ID", temp)
-           
-           
-           xrf.x <- data.table(xrf.x)
-           xrf.y <- data.table(xrf.y)
-           
-           
-           energy.m <- xrf.x[, list(variable = names(.SD), value = unlist(.SD, use.names = F)), by = ID]
-           cps.m <- xrf.y[, list(variable = names(.SD), value = unlist(.SD, use.names = F)), by = ID]
-           
-
+            
+            
+            xrf.x <- data.table(xrf.x)
+            xrf.y <- data.table(xrf.y)
+            
+            
+            energy.m <- xrf.x[, list(variable = names(.SD), value = unlist(.SD, use.names = F)), by = ID]
+            cps.m <- xrf.y[, list(variable = names(.SD), value = unlist(.SD, use.names = F)), by = ID]
+            
+            
             spectra.frame <- data.frame(energy.m$value, cps.m$value, cps.m$variable)
             colnames(spectra.frame) <- c("Energy", "CPS", "Spectrum")
             data <- spectra.frame
@@ -65,20 +61,526 @@ myfiles.x = pblapply(inFile$datapath, read_csv_filename_x)
             
             incProgress(1/n)
             Sys.sleep(0.1)
-            })
-
-     data
-     
         })
-
-
-        output$contents <- renderTable({
+        
+        data
+    })
+    
+    
+    netCounts <- reactive({
+        
+        withProgress(message = 'Processing Data', value = 0, {
             
             
-
-           myData()
-          
+            inFile <- input$file1
+            if (is.null(inFile)) return(NULL)
+            
+            #inName <- inFile$name
+            #inPath <- inFile$datapath
+            
+            #inList <- list(inName, inPath)
+            #names(inList) <- c("inName", "inPath")
+            
+            
+            n <- length(inFile$name)
+            net.names <- gsub("\\@.*","",inFile$name)
+            
+            myfiles = pblapply(inFile$datapath,  read_csv_net)
+            
+            
+            myfiles.frame.list <- pblapply(myfiles, data.frame, stringsAsFactors=FALSE)
+            nms = unique(unlist(pblapply(myfiles.frame.list, names)))
+            myfiles.frame <- as.data.frame(do.call(rbind, lapply(myfiles.frame.list, "[", nms)))
+            myfiles.frame <- as.data.frame(sapply(myfiles.frame, as.numeric))
+            
+            
+            #myfiles.frame$Spectrum <- net.names
+            
+            united.frame <- data.frame(net.names, myfiles.frame)
+            colnames(united.frame) <- c("Spectrum", names(myfiles.frame))
+            #united.frame$None <- rep(1, length(united.frame$Spectrum))
+            
+            
+            incProgress(1/n)
+            Sys.sleep(0.1)
         })
+        
+        united.frame <- as.data.frame(united.frame)
+        united.frame
+        
+    })
+    
+    
+    
+    observeEvent(input$actionprocess, {
+        
+        
+        myData <- reactive({
+            
+            data <- if(input$filetype=="Spectra"){
+                fullSpectra()
+            } else if(input$filetype=="Net"){
+                netCounts()
+            }
+            
+            data
+            
+            
+        })
+        
+        
+        calFileContents <- reactive({
+            
+            existingCalFile <- input$calfileinput
+            
+            if (is.null(existingCalFile)) return(NULL)
+            
+            
+            Calibration <- readRDS(existingCalFile$datapath)
+            
+            Calibration
+            
+        })
+        
+        
+        
+        dataCount <- reactive({
+            inFile <- input$file1
+            
+            if(input$usecalfile==FALSE){
+                length(inFile$datapath)
+            }else if(input$usefile==TRUE){
+                length(calFileContents()$Intensities)
+            }
+        })
+        
+        
+        
+        
+        
+        
+        
+        # Return the requested dataset
+        datasetInput <- reactive({
+            switch(input$element,
+            "H.table" = H.table,
+            "He.table" = He.table,
+            "Li.table" = Li.table,
+            "Be.table" = Be.table,
+            "B.table" = B.table,
+            "C.table" = C.table,
+            "N.table" = N.table,
+            "O.table" = O.table,
+            "F.table" = F.table,
+            "Ne.table" = Ne.table,
+            "Na.table" = Na.table,
+            "Mg.table" = Mg.table,
+            "Al.table" = Al.table,
+            "Si.table" = Si.table,
+            "P.table" = P.table,
+            "S.table" = S.table,
+            "Cl.table" = Cl.table,
+            "Ar.table" = Ar.table,
+            "K.table" = K.table,
+            "Ca.table" = Ca.table,
+            "Sc.table" = Sc.table,
+            "Ti.table" = Ti.table,
+            "V.table" = V.table,
+            "Cr.table" = Cr.table,
+            "Mn.table" = Mn.table,
+            "Fe.table" = Fe.table,
+            "Co.table" = Co.table,
+            "Ni.table" = Ni.table,
+            "Cu.table" = Cu.table,
+            "Zn.table" = Zn.table,
+            "Ga.table" = Ga.table,
+            "Ge.table" = Ge.table,
+            "As.table" = As.table,
+            "Se.table" = Se.table,
+            "Br.table" = Br.table,
+            "Kr.table" = Kr.table,
+            "Rb.table" = Rb.table,
+            "Sr.table" = Sr.table,
+            "Y.table" = Y.table,
+            "Zr.table" = Zr.table,
+            "Nb.table" = Nb.table,
+            "Mo.table" = Mo.table,
+            "Tc.table" = Tc.table,
+            "Ru.table" = Ru.table,
+            "Rh.table" = Rh.table,
+            "Pd.table" = Pd.table,
+            "Ag.table" = Ag.table,
+            "Cd.table" = Cd.table,
+            "In.table" = In.table,
+            "Sn.table" = Sn.table,
+            "Sb.table" = Sb.table,
+            "Te.table" = Te.table,
+            "I.table" = I.table,
+            "Xe.table" = Xe.table,
+            "Cs.table" = Cs.table,
+            "Ba.table" = Ba.table,
+            "La.table" = La.table,
+            "Ce.table" = Ce.table,
+            "Pr.table" = Pr.table,
+            "Nd.table" = Nd.table,
+            "Pm.table" = Pm.table,
+            "Sm.table" = Sm.table,
+            "Eu.table" = Eu.table,
+            "Gd.table" = Gd.table,
+            "Tb.table" = Tb.table,
+            "Dy.table" = Dy.table,
+            "Ho.table" = Ho.table,
+            "Er.table" = Er.table,
+            "Tm.table" = Tm.table,
+            "Yb.table" = Yb.table,
+            "Lu.table" = Lu.table,
+            "Hf.table" = Hf.table,
+            "Ta.table" = Ta.table,
+            "W.table" = W.table,
+            "Re.table" = Re.table,
+            "Os.table" = Os.table,
+            "Ir.table" = Ir.table,
+            "Pt.table" = Pt.table,
+            "Au.table" = Au.table,
+            "Hg.table" = Hg.table,
+            "Tl.table" = Tl.table,
+            "Pb.table" = Pb.table,
+            "Bi.table" = Bi.table,
+            "Po.table" = Po.table,
+            "At.table" = At.table,
+            "Rn.table" = Rn.table,
+            "Fr.table" = Fr.table,
+            "Ra.table" = Ra.table,
+            "Ac.table" = Ac.table,
+            "Th.table" = Th.table,
+            "Pa.table" = Pa.table,
+            "U.table" = U.table)
+        })
+    
+ 
+    
+
+
+myValData <- reactive({
+    
+    data <- if(input$filetype=="Spectra"){
+        fullSpectra()
+    } else if(input$filetype=="Net"){
+        netCounts()
+    }
+    
+    data
+    
+})
+
+
+
+calFileContents2 <- reactive({
+    
+    existingCalFile <- input$calfileinput
+    
+    if (is.null(existingCalFile)) return(NULL)
+    
+    
+    Calibration <- readRDS(existingCalFile$datapath)
+    
+    Calibration
+    
+})
+
+
+
+
+
+
+calValHold <- reactive({
+    
+    
+    calFileContents2()[[6]]
+    
+    
+    
+    
+    
+})
+
+calVariables <- reactive({
+    
+    
+    calFileContents2()$Intensities
+    
+    
+    
+})
+
+calValElements <- reactive({
+    calList <- calValHold()
+    valelements <- ls(calList)
+    valelements
+})
+
+calVariableElements <- reactive({
+    variables <- calVariables()
+    variableelements <- ls(variables)
+    variableelements
+})
+
+
+
+
+
+
+tableInputValCounts <- reactive({
+    valelements <- calValElements()
+    variableelements <- calVariableElements()
+    val.data <- myValData()
+    
+    if(input$filetype=="Spectra"){spectra.line.list <- lapply(valelements, function(x) elementGrab(element.line=x, data=val.data))}
+    if(input$filetype=="Spectra"){element.count.list <- lapply(spectra.line.list, '[', 2)}
+    
+    
+    
+    if(input$filetype=="Spectra"){spectra.line.vector <- as.numeric(unlist(element.count.list))}
+    
+    if(input$filetype=="Spectra"){dim(spectra.line.vector) <- c(length(spectra.line.list[[1]]$Spectrum), length(valelements))}
+    
+    if(input$filetype=="Spectra"){spectra.line.frame <- data.frame(spectra.line.list[[1]]$Spectrum, spectra.line.vector)}
+    
+    if(input$filetype=="Spectra"){colnames(spectra.line.frame) <- c("Spectrum", valelements)}
+    
+    if(input$filetype=="Spectra"){spectra.line.frame <- as.data.frame(spectra.line.frame)}
+    
+    if(input$filetype=="Spectra"){spectra.line.frame}
+    
+    if(input$filetype=="Spectra"){val.line.table <- data.table(spectra.line.frame[, c("Spectrum", valelements), drop = FALSE])}
+    
+    
+    if(input$filetype=="Net"){val.line.table <- val.data[c("Spectrum", valelements), drop=FALSE]}
+    
+    
+    val.line.table
+    
+    
+})
+
+
+
+fullInputValCounts <- reactive({
+    valelements <- calValElements()
+    variableelements <- calVariableElements()
+    val.data <- myValData()
+    
+    if(input$filetype=="Spectra"){spectra.line.list <- lapply(variableelements, function(x) elementGrab(element.line=x, data=val.data))}
+    if(input$filetype=="Spectra"){element.count.list <- lapply(spectra.line.list, `[`, 2)}
+    
+    
+    if(input$filetype=="Spectra"){spectra.line.vector <- as.numeric(unlist(element.count.list))}
+    
+    if(input$filetype=="Spectra"){dim(spectra.line.vector) <- c(length(spectra.line.list[[1]]$Spectrum), length(variableelements))}
+    
+    if(input$filetype=="Spectra"){spectra.line.frame <- data.frame(spectra.line.list[[1]]$Spectrum, spectra.line.vector)}
+    
+    if(input$filetype=="Spectra"){colnames(spectra.line.frame) <- c("Spectrum", variableelements)}
+    
+    if(input$filetype=="Spectra"){spectra.line.frame <- as.data.frame(spectra.line.frame)}
+    
+    if(input$filetype=="Spectra"){val.line.table <- spectra.line.frame[c("Spectrum", variableelements)]}
+    
+    if(input$filetype=="Net"){val.line.table <- val.data}
+    
+    val.line.table
+})
+
+
+
+
+
+
+
+tableInputValQuant <- reactive({
+    
+    count.table <- data.frame(fullInputValCounts())
+    the.cal <- calValHold()
+    elements <- calValElements()
+    variables <- calVariableElements()
+    valdata <- myValData()
+    
+    
+    
+    
+    
+    predicted.list <- pblapply(elements, function (x)
+    if(input$filetype=="Spectra" && the.cal[[x]][[1]]$CalTable$CalType!=3 && the.cal[[x]][[1]]$CalTable$NormType==1){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=general.prep(
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x)
+        )
+    } else if(input$filetype=="Spectra" && the.cal[[x]][[1]]$CalTable$CalType!=3 && the.cal[[x]][[1]]$CalTable$NormType==2) {
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=simple.tc.prep(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x
+        )
+        )
+    } else if(input$filetype=="Spectra" && the.cal[[x]][[1]]$CalTable$CalType!=3 && the.cal[[x]][[1]]$CalTable$NormType==3) {
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=simple.comp.prep(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        norm.min=the.cal[[x]][[1]][1]$CalTable$Min,
+        norm.max=the.cal[[x]][[1]][1]$CalTable$Max
+        )
+        )
+    } else if(input$filetype=="Spectra" && the.cal[[x]][[1]]$CalTable$CalType==3 && the.cal[[x]][[1]]$CalTable$NormType==1){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=lukas.simp.prep(
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        slope.element.lines=the.cal[[x]][[1]][2]$Slope,
+        intercept.element.lines=the.cal[[x]][[1]][3]$Intercept
+        )
+        )
+    } else if(input$filetype=="Spectra" && the.cal[[x]][[1]]$CalTable$CalType==3 && the.cal[[x]][[1]]$CalTable$NormType==2){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=lukas.tc.prep(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        slope.element.lines=the.cal[[x]][[1]][2]$Slope,
+        intercept.element.lines=the.cal[[x]][[1]][3]$Intercept
+        )
+        )
+    } else if(input$filetype=="Spectra" && the.cal[[x]][[1]]$CalTable$CalType==3 && the.cal[[x]][[1]]$CalTable$NormType==3){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=lukas.comp.prep(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        slope.element.lines=the.cal[[x]][[1]][2]$Slope,
+        intercept.element.lines=the.cal[[x]][[1]][3]$Intercept,
+        norm.min=the.cal[[x]][[1]][1]$CalTable$Min,
+        norm.max=the.cal[[x]][[1]][1]$CalTable$Max
+        )
+        )
+    }else if(input$filetype=="Net" && the.cal[[x]][[1]]$CalTable$CalType!=3 && the.cal[[x]][[1]]$CalTable$NormType==1){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=general.prep.net(
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x)
+        )
+    } else if(input$filetype=="Net" && the.cal[[x]][[1]]$CalTable$CalType!=3 && the.cal[[x]][[1]]$CalTable$NormType==2) {
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=simple.tc.prep.net(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x
+        )
+        )
+    } else if(input$filetype=="Net" && the.cal[[x]][[1]]$CalTable$CalType!=3 && the.cal[[x]][[1]]$CalTable$NormType==3) {
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=simple.comp.prep.net(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        norm.min=the.cal[[x]][[1]][1]$CalTable$Min,
+        norm.max=the.cal[[x]][[1]][1]$CalTable$Max
+        )
+        )
+    } else if(input$filetype=="Net" && the.cal[[x]][[1]]$CalTable$CalType==3 && the.cal[[x]][[1]]$CalTable$NormType==1){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=lukas.simp.prep.net(
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        slope.element.lines=the.cal[[x]][[1]][2]$Slope,
+        intercept.element.lines=the.cal[[x]][[1]][3]$Intercept
+        )
+        )
+    } else if(input$filetype=="Net" && the.cal[[x]][[1]]$CalTable$CalType==3 && the.cal[[x]][[1]]$CalTable$NormType==2){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=lukas.tc.prep.net(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        slope.element.lines=the.cal[[x]][[1]][2]$Slope,
+        intercept.element.lines=the.cal[[x]][[1]][3]$Intercept
+        )
+        )
+    } else if(input$filetype=="Net" && the.cal[[x]][[1]]$CalTable$CalType==3 && the.cal[[x]][[1]]$CalTable$NormType==3){
+        predict(
+        object=the.cal[[x]][[2]],
+        newdata=lukas.comp.prep.net(
+        data=valdata,
+        spectra.line.table=as.data.frame(
+        count.table
+        ),
+        element.line=x,
+        slope.element.lines=the.cal[[x]][[1]][2]$Slope,
+        intercept.element.lines=the.cal[[x]][[1]][3]$Intercept,
+        norm.min=the.cal[[x]][[1]][1]$CalTable$Min,
+        norm.max=the.cal[[x]][[1]][1]$CalTable$Max
+        )
+        )
+    }
+    
+    
+    
+    )
+    
+    predicted.vector <- unlist(predicted.list)
+    
+    dim(predicted.vector) <- c(length(count.table$Spectrum), length(elements))
+    
+    predicted.frame <- data.frame(count.table$Spectrum, predicted.vector)
+    
+    colnames(predicted.frame) <- c("Spectrum", elements)
+    
+    #predicted.data.table <- data.table(predicted.frame)
+    #predicted.values <- t(predicted.values)
+    #predicted.data.table
+    predicted.frame
+    
+})
+
+
+
+
+
         
         # Return the requested dataset
         datasetInput <- reactive({
@@ -281,26 +783,78 @@ print(plotInput())
         
         
         
-
+         })
         
       
    
     
+    
+         
+         dataMerge <- reactive({
+             
+             if(input$filetype=="Spectra" && input$usecalfile==FALSE){
+                 spectra.line.fn(myData())
+             } else if(input$filetype=="Net" && input$usecalfile==FALSE){
+                 myData()
+             } else if(input$filetype=="Spectra" && input$usecalfile==TRUE) {
+                 tableInputValQuant()
+             } else if(input$filetype=="Net" && input$usecalfile==TRUE){
+                 tableInputValQuant()
+             }
+             
          })
          
          
- data <- myData()
- 
- 
- spectra.line.table <- spectra.line.fn(data)
- select.line.table <- datatable(spectra.line.table[, input$show_vars, drop = FALSE])
- select.line.table
- 
-  
- fordownload <- spectra.line.table[input$show_vars]
- 
+         
+         lineOptions <- reactive({
+             
+             spectra.line.table <- myData()[ ,!(colnames(myData()) == "Depth")]
+             if(input$usecalfile==TRUE){
+                 quant.frame <- tableInputValQuant()[ ,!(colnames(tableInputValQuant()) =="Depth")]
+                 quantified <- colnames(quant.frame)
+             }
+             
+             standard <- if(input$usecalfile==FALSE && input$filetype=="Spectra"){
+                 spectralLines
+             } else if(input$usecalfile==FALSE && input$filetype=="Net"){
+                 colnames(spectra.line.table)
+             } else if(input$usecalfile==TRUE && input$filetype=="Spectra"){
+                 quantified
+             }else if(input$usecalfile==TRUE && input$filetype=="Net"){
+                 quantified
+             }
+             
+         })
+         
+         defaultLines <- reactive({
+             
+             spectra.line.table <- myData()
+             if(input$usecalfile==TRUE){quantified <- colnames(tableInputValQuant()[ ,!(colnames(tableInputValQuant()) =="Depth")])
+             }
+             
+             standard <- if(input$usecalfile==FALSE && input$filetype=="Spectra"){
+                 c("Ca.K.alpha", "Ti.K.alpha", "Fe.K.alpha", "Cu.K.alpha", "Zn.K.alpha")
+             } else if(input$usecalfile==FALSE && input$filetype=="Net"){
+                 colnames(spectra.line.table)
+             } else if(input$usecalfile==TRUE && input$filetype=="Spectra"){
+                 quantified
+             }else if(input$usecalfile==TRUE && input$filetype=="Net"){
+                 quantified
+             }
+             
+         })
+         
+         output$defaultlines <- renderUI({
+             
+             
+             checkboxGroupInput('show_vars', 'Elemental lines to show:',
+             choices=lineOptions(), selected = defaultLines())
+         })
+         
+
+
  tableInput <- reactive({
-     spectra.line.table <- spectra.line.fn(data)
+     spectra.line.table <- dataMerge()
      select.line.table <- datatable(spectra.line.table[, input$show_vars, drop = FALSE])
      select.line.table
  })
@@ -312,15 +866,14 @@ print(plotInput())
 
   })
   
-  fullTable <- reactive({
-      
-      
-  })
+
   
   
   hotableInput <- reactive({
-      empty.line.table <-  spectra.line.table[input$show_vars] * 0
-      empty.line.table <- empty.line.table[1:2]
+      
+      spectra.line.table <- dataMerge()
+
+      empty.line.table <- spectra.line.table[1:2]
       colnames(empty.line.table) <- c("Qualitative", "Quantitative")
       empty.line.table$Spectrum <- spectra.line.table$Spectrum
       na.vector <- rep("NULL", length(empty.line.table$Qualitative))
@@ -364,7 +917,32 @@ print(plotInput())
 
 
 
+dataMerge2 <- reactive({
+    
+    spectra.line.table <- dataMerge()
+    
+    cat.table <- values[["DF"]]
+    
+    new.line.table <- data.frame(spectra.line.table, cat.table[2:3])
+    colnames(new.line.table) <- c(names(spectra.line.table), names(cat.table))
+    
+    new.line.table
+    
+})
 
+
+
+choiceLines <- reactive({
+    
+    spectra.line.table <- dataMerge()
+    
+    standard <- if(input$filetype=="Spectra"){
+        colnames(spectra.line.table[ ,!(colnames(spectra.line.table) == "Spectrum")])
+    } else if(input$filetype=="Net"){
+        colnames(spectra.line.table[ ,!(colnames(spectra.line.table) == "Spectrum")])
+    }
+    
+})
   
 
   
@@ -381,6 +959,7 @@ print(plotInput())
   
   xrfKReactive <- reactive({
       
+      spectra.line.table <- dataMerge()
 
       xrf.pca.header <- input$show_vars
       xrf.pca.frame <- spectra.line.table[input$show_vars]
@@ -404,8 +983,7 @@ print(plotInput())
   
   xrfPCAReactive <- reactive({
       
-      
-      
+      spectra.line.table <- dataMerge()
 
       
       xrf.clusters <- xrfKReactive()
@@ -419,7 +997,11 @@ print(plotInput())
       xrf.pca.results
   })
   
+  
+  
   plotInput2 <- reactive({
+      
+      spectra.line.table <- dataMerge()
       
   xrf.pca.results <- xrfKReactive()
   
@@ -649,9 +1231,36 @@ output$inApp <- renderUI({
 })
 
 
+dataDefaultSelect <- reactive({
+    
+    data.options <-defaultLines()
+    data.selected <- data.options[5]
+    data.selected
+    
+})
+
+secondDefaultSelect <- reactive({
+    
+    data.options <-defaultLines()
+    data.selected <- data.options[6]
+    data.selected
+    
+})
+
+
+output$inelementtrend <- renderUI({
+    selectInput("elementtrend", "Element:", choices=choiceLines(), selected=dataDefaultSelect())
+})
+
+output$inelementnorm <- renderUI({
+    selectInput("elementnorm", "Ratio:", choices=choiceLines(), selected="None")
+})
 
 
 plotInput3a <- reactive({
+    
+    spectra.line.table <- dataMerge()
+
    
    xrf.k <- xrfKReactive()
    
@@ -842,6 +1451,8 @@ observeEvent(input$timeseriesact1, {
 
   plotInput3b <- reactive({
       
+      spectra.line.table <- dataMerge()
+      
       
       xrf.k <- xrfKReactive()
       
@@ -1019,6 +1630,9 @@ observeEvent(input$timeseriesact1, {
 
   plotInput3c <- reactive({
       
+      spectra.line.table <- dataMerge()
+
+      
       
       xrf.k <- xrfKReactive()
       
@@ -1184,6 +1798,8 @@ observeEvent(input$timeseriesact1, {
 
   plotInput3d <- reactive({
       
+      spectra.line.table <- dataMerge()
+
       
       xrf.k <- xrfKReactive()
       
@@ -1352,6 +1968,9 @@ observeEvent(input$timeseriesact1, {
 
   plotInput3e <- reactive({
       
+      spectra.line.table <- dataMerge()
+
+      
       xrf.k <- xrfKReactive()
       
       quality.table <- values[["DF"]]
@@ -1517,9 +2136,81 @@ observeEvent(input$timeseriesact1, {
       ggsave(file,plotInput3e(), device="tiff", dpi=300, width=10, height=7)
   }
   )
-   
+  
+  
+  
+  ratioChooseA <- reactive({
+      spectra.line.table <- dataMerge()
+      spectra.line.names <- colnames(spectra.line.table)
+      
+      
+      standard <- spectra.line.names[2]
+      standard
+      
+  })
+  
+  
+  
+  ratioChooseB <- reactive({
+      spectra.line.table <- dataMerge()
+      spectra.line.names <- colnames(spectra.line.table)
+      
+      
+      standard <- spectra.line.names[3]
+      
+      
+      standard
+      
+  })
+  
+  
+  ratioChooseC <- reactive({
+      spectra.line.table <- dataMerge()
+      spectra.line.names <- colnames(spectra.line.table)
+      
+      
+      standard <- spectra.line.names[4]
+      
+      
+      standard
+      
+  })
+  
+  
+  ratioChooseD <- reactive({
+      spectra.line.table <- dataMerge()
+      spectra.line.names <- colnames(spectra.line.table)
+      
+      standard <- spectra.line.names[5]
+      
+      
+      standard
+      
+  })
+  
+  
+  output$inelementratioa <- renderUI({
+      selectInput("elementratioa", "Element A", choices=choiceLines(), selected=ratioChooseA())
+  })
+  
+  output$inelementratiob <- renderUI({
+      selectInput("elementratiob", "Element B", choices=choiceLines(), selected=ratioChooseB())
+  })
+  
+  output$inelementratioc <- renderUI({
+      selectInput("elementratioc", "Element C", choices=choiceLines(), selected=ratioChooseC())
+  })
+  
+  output$inelementratiod <- renderUI({
+      selectInput("elementratiod", "Element D", choices=choiceLines(), selected=ratioChooseD())
+  })
+  
+  
   
   plotInput4 <- reactive({
+      
+      spectra.line.table <- dataMerge()
+
       
      
      xrf.k <- xrfKReactive()
@@ -1699,10 +2390,62 @@ observeEvent(input$timeseriesact1, {
 
 
 
+ternaryChooseA <- reactive({
+    spectra.line.table <- dataMerge()
+    spectra.line.names <- colnames(spectra.line.table)
+    
+    
+    standard <- if(input$filetype=="Spectra"){
+        "Al.K.alpha"
+    } else if(input$filetype=="Net"){
+        spectra.line.names[2]
+    }
+    
+})
+
+ternaryChooseB <- reactive({
+    spectra.line.table <- dataMerge()
+    spectra.line.names <- colnames(spectra.line.table)
+    
+    
+    standard <- if(input$filetype=="Spectra"){
+        "Si.K.alpha"
+    } else if(input$filetype=="Net"){
+        spectra.line.names[3]
+    }
+    
+})
+
+ternaryChooseC <- reactive({
+    spectra.line.table <- dataMerge()
+    spectra.line.names <- colnames(spectra.line.table)
+    
+    
+    standard <- if(input$filetype=="Spectra"){
+        "Ca.K.alpha"
+    } else if(input$filetype=="Net"){
+        spectra.line.names[4]
+    }
+    
+})
+
+output$inaxisa <- renderUI({
+    selectInput("axisa", "Axis A", choices=choiceLines(), selected=ternaryChooseA())
+})
+
+output$inaxisb <- renderUI({
+    selectInput("axisb", "Axis B", choices=choiceLines(), selected=ternaryChooseB())
+})
+
+output$inaxisc <- renderUI({
+    selectInput("axisc", "Axis C", choices=choiceLines(), selected=ternaryChooseC())
+})
 
 
 plotInput5 <- reactive({
     
+    spectra.line.table <- dataMerge()
+
     
     xrf.k <- xrfKReactive()
     
@@ -2019,13 +2762,4 @@ content = function(file) {
 })
 
 })
-
-
-
-
-
-
-
-
-
 
